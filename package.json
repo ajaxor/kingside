@@ -1,0 +1,15 @@
+{
+  "name": "kingside",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kingside: a browser real-time strategy game. Plan the town, let it run itself, burn the red keep.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test",
+    "stamp": "node tools/stamp.mjs"
+  }
+}

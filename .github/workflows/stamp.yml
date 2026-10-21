@@ -1,0 +1,52 @@
+---
+name: Test and stamp
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # the stamp job commits src/build-info.js back to main
+
+concurrency:
+  group: stamp
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  # Keeps src/build-info.js (the git hash and date on the title screen) current, with no one having to remember to.
+  # The webgames launcher serves the repo's files exactly as they are, so the stamp has to live in the repo itself.
+  # tools/stamp.mjs names the latest commit that is not a stamp, so this commit changes nothing the next run would stamp
+  # again, and "[skip ci]" keeps it from starting another run.
+  stamp:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/stamp.mjs
+      - name: Commit the stamp
+        run: |
+          if git diff --quiet -- src/build-info.js; then echo "build-info.js is already current"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/build-info.js
+          git commit -m "Stamp build info [skip ci]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
