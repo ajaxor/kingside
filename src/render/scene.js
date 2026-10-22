@@ -77,7 +77,8 @@ export function render(view) {
   if (view.razeTarget && !view.razeTarget.dead) drawRing(view.razeTarget, [.95, .35, .3], .9);
   const lane = laneToLight(view);
   if (lane) drawLane(lane, now);
-  if (view.ghost) drawGhost(view.ghost);
+  if (view.menuTile) drawTileMark(view.menuTile, now);
+  if (view.ghost) drawGhost(view.ghost, now);
   setDepthWrite(true); setBlending(false);
   if (view.blur) endScene(camera.D);
 }
@@ -99,7 +100,7 @@ function drawLane(id, now) {
   const pulse = (now * 14) % total;
   for (let n = 1; n < route.length; n++) {
     const [ax, az] = route[n - 1], [bx, bz] = route[n], len = Math.hypot(bx - ax, bz - az), rot = Math.atan2(-(bz - az), bx - ax);
-    drawMesh(cube, (ax + bx) / 2, .045, (az + bz) / 2, rot, len + .3, .03, 1.7, glow, 1, .85);
+    drawMesh(cube, (ax + bx) / 2, .045, (az + bz) / 2, rot, len + .3, .03, 1.7, glow, 1, .6);
     if (pulse >= walked && pulse < walked + len) {
       const t = (pulse - walked) / len;
       drawMesh(cube, ax + (bx - ax) * t, .06, az + (bz - az) * t, rot, 1.6, .04, 1.7, [1, .97, .75], 1, .9);
@@ -230,11 +231,19 @@ function drawBars() {
   }
 }
 
-function drawGhost(ghost) {
+/** A pulsing frame round the tile whose build menu is open. */
+function drawTileMark({ i, j }, now) {
+  const cube = meshes.prop.cube, x = i + .5, z = j + .5, s = .5 + .03 * Math.sin(now * 6), t = .07, a = .85;
+  drawMesh(cube, x, .06, z - s, 0, s * 2 + t, .05, t, [1, .93, .55], 1, a); drawMesh(cube, x, .06, z + s, 0, s * 2 + t, .05, t, [1, .93, .55], 1, a);
+  drawMesh(cube, x - s, .06, z, 0, t, .05, s * 2 + t, [1, .93, .55], 1, a); drawMesh(cube, x + s, .06, z, 0, t, .05, s * 2 + t, [1, .93, .55], 1, a);
+}
+
+function drawGhost(ghost, now) {
   const def = BUILDINGS[ghost.type], ok = canPlace(ghost.type, ghost.i, ghost.j), color = ok ? GHOST_OK : GHOST_BAD;
   const gx = ghost.i + def.size / 2, gz = ghost.j + def.size / 2;
   drawMesh(meshes.prop.cube, gx, .03, gz, 0, def.size, .05, def.size, color, 1, .45);
   setDepthWrite(true);
   drawMesh(meshes.building[0][def.models ? def.models.post : ghost.type], gx, 0, gz, 0, 1, 1, 1, color, .35, .7);
+  if (ok) drawMesh(meshes.prop.gem, gx, (def.barHeight ?? 1) + .35 + Math.abs(Math.sin(now * 4)) * .15, gz, now * 2, .09, .14, .09, [.98, .82, .32], 1);   // "touch me again"
   setDepthWrite(false);
 }

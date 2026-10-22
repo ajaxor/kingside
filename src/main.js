@@ -67,6 +67,7 @@ export async function boot({ onQuit } = {}) {
       selected: ui.mode === 'look' ? ui.selected : null,
       razeTarget: ui.mode === 'remove' ? ui.razeTarget : null,
       ghost: ui.mode === 'build' && ui.ghost && !BUILDINGS[ui.buildType].paint ? { type: ui.buildType, i: ui.ghost[0], j: ui.ghost[1] } : null,
+      menuTile: ui.menu ? { i: ui.menu.i, j: ui.menu.j } : null,
       blur: hudOptions.blur,
     });
     frameId = requestAnimationFrame(frame);

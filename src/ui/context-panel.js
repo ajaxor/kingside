@@ -7,14 +7,15 @@ import { BUILDINGS } from '../data/buildings.js';
 import { TEAM_COLORS } from '../render/palette.js';
 import { canAfford } from '../game/economy.js';
 import { canPlace } from '../game/buildings.js';
-import { clearMarks, marchNow, planBuilding, razeBuilding, upgradeForPlayer } from '../game/commands.js';
+import { clearMarks, marchNow, razeBuilding, upgradeForPlayer } from '../game/commands.js';
+import { confirmGhost } from './placement.js';
 import { $ } from './dom.js';
 import { costHtml } from './build-menu.js';
 import { buildingStatus } from './status.js';
 import { slotsHtml } from './slots.js';
 import { laneFor, laneById } from '../game/lanes.js';
 import { territory } from '../core/world.js';
-import { changed, onUiChange, select, setGhost, setMode, setRazeTarget, ui } from './state.js';
+import { changed, onUiChange, select, setMode, setRazeTarget, ui } from './state.js';
 
 const isPainting = () => ui.mode === 'mark' || (ui.mode === 'build' && !!BUILDINGS[ui.buildType].paint);
 
@@ -43,9 +44,9 @@ function describe() {
     return {
       key: 'b' + ui.buildType + (ghost ? ghost.join() : '') + ok,
       html: `<h3>${def.name}</h3><p>${def.desc}</p><div class="costs">${costHtml(def.cost, stock)}</div>`
-        + (ghost ? `<p>${ok ? 'Drag the outline to adjust, then place it. Builders haul whatever is missing.' : across ? 'You can only build on your own side of the river.' : 'Blocked here. Pick open, dry ground.'}</p>` : '<p>Tap the map where it should go.</p>')
+        + (ghost ? `<p>${ok ? 'Touch the outline again to build it, or drag it to move it. Builders haul whatever is missing.' : across ? 'You can only build on your own side of the river.' : 'Blocked here. Pick open, dry ground.'}</p>` : '<p>Tap the map where it should go. Touch the outline that appears to build it.</p>')
         + (lane && ok ? `<p class="lanenote">Its troops will march down the <b>${lane.name}</b> (lit on the map). Place it nearer another lane to change that.</p>` : '')
-        + `<div class="acts"><button class="btn" data-a="cancel">Cancel</button>${ghost ? `<button class="btn pri" data-a="place" ${ok ? '' : 'disabled'}>Place</button>` : ''}</div>`,
+        + `<div class="acts"><button class="btn" data-a="cancel">Cancel</button>${ghost ? `<button class="btn pri" data-a="place" ${ok ? '' : 'disabled'}>Build here</button>` : ''}</div>`,
     };
   }
   if (ui.mode === 'mark') {
@@ -104,12 +105,7 @@ export function refreshPanel(force = false) {
 const ACTIONS = {
   cancel: () => setMode('look'),
   close: () => select(null),
-  place() {
-    const [i, j] = ui.ghost || [];
-    if (!ui.ghost || !canPlace(ui.buildType, i, j)) return;
-    planBuilding(ui.buildType, i, j);
-    setGhost(null);
-  },
+  place: () => confirmGhost(),
   clearmarks: () => clearMarks(),
   raze() {
     if (!ui.razeTarget) return;

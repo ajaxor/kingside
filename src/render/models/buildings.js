@@ -1,146 +1,165 @@
-// Models of the buildings, each a small function that adds a few boxes, roofs and cones to a MeshBuilder `m`. `T` is the owning team's
-// colour and `TD` its darker trim. Models are built once per team and shared by every building of that type.
+// Models of the buildings, in a deliberately abstract, iconographic style. From the steep camera a roof is a blob, so every building is
+// the same three layers instead:
 //
-// A building takes one tile (the keep two) but its body only fills the middle ~.55 of it: the rest is the walkway people use to go round.
-// Each type has its own body colour AND its own silhouette, so you can tell them apart in a glance: a thin tower, a squat round bastion,
-// a barn with a silo, a smithy with a glowing forge, a mine in a grey mound. Team colour goes on roofs, flags and banners only.
+//   a team ring     a thin disc in the owner's colour, so whose it is reads at a glance
+//   a plinth        an octagon in the colour of its menu category (homes sand, gather green, craft amber, defend slate, army violet)
+//   a glyph         one bold pictogram standing on it that says what the building is: a saw blade, a target, an anvil, a gear, a shield
 //
+// The glyph is built to read looking down: flat symbols made of discs and beams (`beam` is a box at any angle), with a little height.
+// The keep, towers and the hall's banner stand tall so defence and command read from afar. Walls, gates and traps are separate pieces.
 // A model id is a building type, or one of the pieces a wall is drawn from ('post', 'link', 'ppost', 'plink' and the gate), or 'field'.
-// Coordinates are in tiles around the footprint's centre; y is up.
+// Coordinates are in tiles around the footprint's centre; y is up. `T` is the owning team's colour, `TD` its darker shade.
 
 import { mulberry } from '../../core/random.js';
+import { categoryOf } from '../../data/buildings.js';
 import { MeshBuilder } from '../mesh-builder.js';
 import { C, TEAM_COLORS } from '../palette.js';
 
-const TAU = 6.283;
-const pole = (m, x, z, y0, y1, w = .015) => m.box(x - w, y0, z - w, x + w, y1, z + w, C.woodD);
-const flag = (m, x, z, y0, y1, T, len = .3) => { pole(m, x, z, y0, y1); m.box(x, y1 - len * .8, z - .012, x + len, y1, z + .012, T); };
-const door = (m, x, w, h, z) => m.box(x - w, 0, z - .01, x + w, h, z + .03, C.dark);
-// A gear seen face-on: a plus and a cross of boxes, so it reads as a wheel.
-const gear = (m, x, y, z, r, col) => {
-  m.box(x - r, y - r * .3, z - .015, x + r, y + r * .3, z + .015, col); m.box(x - r * .3, y - r, z - .015, x + r * .3, y + r, z + .015, col);
-  m.box(x - r * .75, y - r * .75, z - .01, x + r * .75, y + r * .75, z + .01, col);
-};
+const TAU = 6.283, H = .11;                    // H: the top of the plinth, where every glyph starts
+const lighten = (c, k = .1) => c.map((v) => Math.min(1, v + k));
+const RED = [.86, .32, .26], DARK = C.dark;
 
-const WALK = [.30, .52, .30];
+/** The team ring and category plinth every building stands on. `r` is the plinth's radius. */
+function base(m, T, type, r = .3) {
+  const cat = categoryOf(type)?.color || [.93, .8, .46];
+  m.cyl(0, 0, 0, r + .035, .04, r + .035, 8, T, Math.PI / 8);
+  m.cyl(0, .04, 0, r, H, r, 8, cat, Math.PI / 8, lighten(cat));
+}
+const disc = (m, x, y0, z, r, h, col, n = 12) => m.cyl(x, y0, z, r, y0 + h, r, n, col, 0, lighten(col, .06));
+/** `n` bars sticking out of a ring, like the teeth of a gear or saw. */
+const teeth = (m, x, z, r0, r1, n, w, y0, y1, col, rot = 0) => {
+  for (let i = 0; i < n; i++) { const a = rot + i / n * TAU; m.beam(x + Math.cos(a) * r0, z + Math.sin(a) * r0, x + Math.cos(a) * r1, z + Math.sin(a) * r1, w, y0, y1, col); }
+};
+const flag = (m, x, z, y0, y1, T, len = .28) => { m.box(x - .015, y0, z - .015, x + .015, y1, z + .015, C.woodD); m.box(x, y1 - len * .75, z - .012, x + len, y1, z + .012, T); };
 
 export const BUILDING_MODELS = {
-  keep(m, T) {                                                         // the one big building: a castle with four turrets and a tall centre
-    m.box(-.92, 0, -.92, .92, .08, .92, C.stoneD);
-    m.box(-.62, .08, -.62, .62, .85, .62, C.stone);
-    m.box(-.68, .85, -.68, .68, .95, .68, C.stoneD);
+  keep(m, T) {                                                         // the castle: a tall centre and four turrets on a gold plinth
+    m.cyl(0, 0, 0, 1.16, .05, 1.16, 8, T, Math.PI / 8);
+    m.cyl(0, .05, 0, 1.08, .14, 1.08, 8, [.92, .8, .48], Math.PI / 8, [.97, .87, .6]);
+    m.box(-.62, .14, -.62, .62, .62, .62, C.stone);
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      m.cyl(sx * .66, 0, sz * .66, .24, 1.35, .22, 8, C.stone); m.cyl(sx * .66, 1.35, sz * .66, .3, 1.9, 0, 8, T);
+      m.cyl(sx * .64, .14, sz * .64, .24, 1.0, .22, 8, C.stone); m.cyl(sx * .64, 1.0, sz * .64, .3, 1.42, 0, 8, T);
     }
-    m.box(-.34, .95, -.34, .34, 1.7, .34, C.stone);
-    m.cyl(0, 1.7, 0, .55, 2.35, 0, 4, T, Math.PI / 4);
-    m.box(-.2, .08, .6, .2, .55, .66, C.dark);
-    flag(m, 0, 0, 2.3, 2.9, T, .4); m.box(-.02, 2.28, -.02, .02, 2.34, .02, C.gold);
+    m.cyl(0, .62, 0, .36, 1.5, .32, 8, C.stone);
+    m.cyl(0, 1.5, 0, .44, 1.62, .44, 8, C.stoneD);
+    m.cyl(0, 1.62, 0, .3, 2.05, 0, 8, T);
+    m.box(-.2, .14, .6, .2, .5, .66, DARK);
+    flag(m, 0, 0, 2.0, 2.55, T, .4);
   },
-  hut(m, T) {                                                          // a cottage: timber box, team pyramid roof, a log pile
-    m.box(-.24, 0, -.2, .24, .3, .2, C.wood);
-    m.roof(-.31, -.27, .31, .27, .3, .3, T, C.wood);
-    door(m, 0, .06, .2, .2);
-    m.box(.2, 0, .24, .36, .08, .36, C.trunk, C.wood);
+
+  // ---- homes: sand ----
+  hut(m, T) {                                                          // a little house
+    base(m, T, 'hut');
+    m.box(-.15, H, -.11, .15, H + .15, .11, C.canvas);
+    m.roof(-.2, -.15, .2, .15, H + .15, .15, T, C.canvas);
+    m.box(-.04, H, .11, .04, H + .1, .13, DARK);
   },
-  mill(m, T) {                                                         // a sawmill: open shed, a big saw wheel and a stack of logs
-    m.box(-.26, 0, -.2, .26, .26, .2, C.woodD);
-    m.roofZ(-.3, -.24, .3, .24, .26, .16, T, C.wood);
-    gear(m, 0, .46, .24, .2, C.steel);
-    for (let i = 0; i < 3; i++) m.box(-.3 + i * .1, 0, .3, -.22 + i * .1, .09, .46, C.trunk, C.wood);
-    m.box(-.26, .09, .32, -.1, .17, .44, C.trunk, C.wood);
+  lodge(m, T) {                                                        // a stack of building blocks and a trowel
+    base(m, T, 'lodge');
+    m.box(-.22, H, -.14, -.02, H + .12, .06, C.stone); m.box(.02, H, -.14, .22, H + .12, .06, C.stoneD); m.box(-.12, H + .12, -.1, .08, H + .22, .02, C.stone);
+    m.beam(.0, .24, .22, .04, .06, H, H + .04, C.steel); m.beam(-.2, .26, .02, .24, .045, H, H + .05, C.woodD);
   },
-  quarry(m) {                                                          // a pit cut in grey rock with a crane lifting a block
-    m.box(-.3, 0, -.3, .3, .06, .3, C.rockD);
-    m.box(-.3, .06, -.3, -.16, .26, .3, C.stoneD); m.box(-.16, .06, -.3, .3, .26, -.16, C.stoneD);
-    m.box(-.08, .06, -.04, .16, .2, .2, C.stone);
-    pole(m, .24, .18, 0, .98, .025); m.box(-.2, .92, .15, .26, .98, .21, C.wood);
-    m.box(-.22, .6, .16, -.12, .76, .2, C.stone); m.box(-.175, .76, .17, -.165, .92, .19, C.woodD);
+
+  // ---- gather: green ----
+  mill(m, T) {                                                         // a saw blade biting a stack of logs
+    base(m, T, 'mill');
+    disc(m, 0, H, -.05, .2, .06, C.steel, 14); teeth(m, 0, -.05, .19, .26, 10, .06, H, H + .055, C.steel, .15);
+    disc(m, 0, H + .06, -.05, .06, .03, C.gold, 8);
+    for (const [x, y] of [[-.14, 0], [.0, 0], [.14, 0], [-.07, .1], [.07, .1]]) m.beam(x, .21, x, .27, .1, H + y, H + y + .1, C.trunk, C.wood);
   },
-  mine(m) {                                                            // a grey mound with a timber arch and an ore cart
-    const r = mulberry(7);
-    m.blob(0, 0, -.06, .32, .42, .3, C.rockD, .1, r, 7, 3, (ring) => (ring === 0 ? C.grassD : C.rockD));
-    m.box(-.15, 0, .16, .15, .3, .24, C.woodD); m.box(-.09, 0, .15, .09, .22, .27, C.dark);
-    m.box(.14, 0, .3, .32, .1, .44, C.steelD); m.blob(.23, .1, .37, .08, .05, .06, C.iron, 0, null, 6, 2);
+  mine(m, T) {                                                         // a rocky mound with ore showing and a dark entrance
+    base(m, T, 'mine');
+    m.blob(-.02, H, -.02, .26, .26, .24, C.rockD, .1, mulberry(7), 7, 3);
+    for (const [x, z] of [[.1, -.08], [-.1, -.1], [0, .06]]) m.box(x - .05, H + .2, z - .04, x + .05, H + .3, z + .04, C.iron, [.92, .62, .44]);
+    m.box(-.09, H, .17, .09, H + .13, .27, DARK);
   },
-  farm(m, T) {                                                         // a barn with a tall silo and a hay bale
-    m.box(-.3, 0, -.18, .12, .26, .2, [.86, .72, .46]);
-    m.roof(-.34, -.22, .16, .24, .26, .22, T, C.woodD);
-    door(m, -.09, .07, .2, .2);
-    m.cyl(.24, 0, -.04, .11, .62, .11, 8, C.canvas); m.dome(.24, .62, -.04, .11, .13, .11, C.steelD, 8, 2);
-    m.cyl(.18, 0, .3, .1, .12, .1, 6, C.straw);
+  farm(m, T) {                                                         // a haystack and a patch of crop
+    base(m, T, 'farm');
+    m.cyl(-.07, H, -.06, .2, H + .34, 0, 8, C.straw);
+    m.box(.1, H, .1, .27, H + .06, .27, C.soil, C.cropG);
+    for (const x of [.13, .19, .25]) m.box(x - .015, H + .06, .11, x + .015, H + .16, .26, C.crop);
   },
   field(m) {
     m.box(-.5, 0, -.5, .5, .04, .5, C.soil);
     for (const x of [-.3, 0, .3]) m.box(x - .07, .04, -.4, x + .07, .3, .4, C.cropG, C.crop);
   },
-  fletch(m, T) {                                                       // a green workshop with a big archery target on a post
-    m.box(-.26, 0, -.2, .1, .24, .2, [.40, .60, .40]);
-    m.roof(-.3, -.24, .14, .24, .24, .18, T, C.woodD);
-    door(m, -.08, .06, .16, .2);
-    pole(m, .26, 0, 0, .54, .02);
-    m.box(.14, .38, -.2, .38, .74, .2, C.canvas);
-    m.box(.14, .43, -.15, .38, .69, .15, C.fire); m.box(.14, .5, -.08, .38, .62, .08, C.canvas); m.box(.14, .54, -.03, .39, .58, .03, C.fire);
+
+  // ---- craft: amber ----
+  fletch(m, T) {                                                       // an archery target with an arrow in it
+    base(m, T, 'fletch');
+    disc(m, 0, H, 0, .27, .03, C.canvas, 16); disc(m, 0, H + .03, 0, .2, .02, RED, 16); disc(m, 0, H + .05, 0, .13, .02, C.canvas, 14); disc(m, 0, H + .07, 0, .06, .02, C.gold, 10);
+    m.beam(-.26, .24, .04, -.04, .035, H + .1, H + .14, C.woodD); m.box(-.05, H + .1, -.09, .06, H + .15, .03, C.steel);
+    m.beam(-.3, .28, -.2, .18, .09, H + .1, H + .12, C.canvas);
   },
-  tower(m, T) {                                                        // tall and thin: a stone shaft, battlements and a team point
-    m.cyl(0, 0, 0, .19, 1.05, .15, 8, C.stone);
-    m.cyl(0, 1.05, 0, .25, 1.2, .25, 8, C.stoneD);
-    for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + .78; m.box(Math.cos(a) * .2 - .04, 1.2, Math.sin(a) * .2 - .04, Math.cos(a) * .2 + .04, 1.32, Math.sin(a) * .2 + .04, C.stoneD); }
-    m.cyl(0, 1.2, 0, .13, 1.62, 0, 8, T);
-    m.box(-.05, 0, .14, .05, .26, .2, C.dark); m.box(-.03, .72, .1, .03, .84, .16, C.dark);
+  smith(m, T) {                                                        // an anvil, a hammer and a flame
+    base(m, T, 'smith');
+    m.box(-.14, H, -.08, .14, H + .08, .08, C.steelD); m.box(-.07, H + .08, -.05, .07, H + .15, .05, C.steelD); m.box(-.22, H + .15, -.085, .18, H + .23, .085, C.steel);
+    m.cyl(-.22, H + .15, 0, .01, H + .15, .01, 3, C.steel);
+    m.beam(.06, .26, .26, .08, .045, H, H + .05, C.woodD); m.box(.2, H, .06, .3, H + .1, .16, C.steel);
+    m.cyl(-.2, H, .2, .09, H + .24, 0, 6, C.fire); m.cyl(-.2, H, .2, .045, H + .15, 0, 6, C.gold);
   },
-  ranger(m, T) {                                                       // two green tents round a fire
-    m.cyl(-.15, 0, -.12, .24, .5, 0, 4, [.30, .52, .30], Math.PI / 4); m.cyl(.17, 0, -.06, .19, .4, 0, 4, [.26, .46, .28], Math.PI / 4);
-    m.cyl(-.08, 0, .24, .07, .06, .07, 6, C.rockD); m.cyl(-.08, .06, .24, .05, .18, 0, 5, C.fire);
-    flag(m, .26, .26, 0, .7, T, .2);
+  engineer(m, T) {                                                     // a big gear
+    base(m, T, 'engineer');
+    teeth(m, 0, 0, .15, .27, 8, .1, H, H + .1, C.steel, .2);
+    disc(m, 0, H, 0, .2, .1, C.steelD, 14); disc(m, 0, H + .1, 0, .09, .03, DARK, 10); disc(m, 0, H + .1, 0, .04, .05, C.gold, 8);
   },
-  raider(m, T) {                                                       // dark hide tents inside a ring of spiked stakes
-    m.cyl(-.1, 0, -.1, .22, .5, 0, 5, [.38, .30, .28], .3);
-    for (let i = 0; i < 8; i++) {
-      const a = i / 8 * TAU;
-      if (a > 1.0 && a < 1.9) continue;
-      m.cyl(Math.cos(a) * .32, 0, Math.sin(a) * .32, .035, .3, 0, 4, C.woodD);
-    }
-    m.cyl(.1, 0, .12, .06, .06, .06, 6, C.rockD); m.cyl(.1, .06, .12, .04, .2, 0, 5, C.fire);
-    flag(m, -.28, .24, 0, .7, T, .2);
+
+  // ---- defend: slate ----
+  tower(m, T) {                                                        // tall and thin: a stone shaft, battlements, a team point
+    base(m, T, 'tower', .26);
+    m.cyl(0, H, 0, .17, H + .95, .14, 8, C.stone);
+    m.cyl(0, H + .95, 0, .23, H + 1.07, .23, 8, C.stoneD);
+    for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + .78; m.box(Math.cos(a) * .2 - .04, H + 1.07, Math.sin(a) * .2 - .04, Math.cos(a) * .2 + .04, H + 1.17, Math.sin(a) * .2 + .04, C.stoneD); }
+    m.cyl(0, H + 1.07, 0, .14, H + 1.45, 0, 8, T);
+    m.box(-.04, H, .13, .04, H + .16, .18, DARK);
   },
-  barracks(m, T) {                                                     // long and low, banners at each end and a shield over the door
-    m.box(-.3, 0, -.17, .3, .26, .17, C.stoneD); m.box(-.32, .26, -.19, .32, .31, .19, T);
-    door(m, 0, .06, .16, .17);
-    m.box(-.1, .18, .17, .1, .3, .2, T);
-    flag(m, -.29, -.15, .3, .84, T, .22); flag(m, .29, -.15, .3, .84, T, .22);
+  ballista(m, T) {                                                     // a crossbow seen from above: stock, two long arms, string and bolt
+    base(m, T, 'ballista');
+    m.beam(0, .26, 0, -.24, .07, H, H + .06, C.woodD);
+    m.beam(0, .1, -.29, -.06, .06, H + .02, H + .09, C.woodD); m.beam(0, .1, .29, -.06, .06, H + .02, H + .09, C.woodD);
+    m.beam(-.29, -.06, .29, -.06, .02, H + .05, H + .07, C.canvas);
+    m.beam(0, .18, 0, -.3, .045, H + .08, H + .12, T); m.box(-.05, H + .08, -.34, .05, H + .12, -.26, C.steel);
   },
-  hall(m, T) {                                                         // grand: pale stone, a gold dome, team banners
-    m.box(-.3, 0, -.24, .3, .34, .24, C.stone); m.box(-.33, .34, -.27, .33, .4, .27, C.gold);
-    m.box(-.14, .4, -.14, .14, .62, .14, C.stone); m.dome(0, .62, 0, .17, .2, .17, C.gold, 8, 3);
-    door(m, 0, .07, .2, .24);
-    flag(m, -.3, .22, 0, .94, T, .25); flag(m, .3, .22, 0, .94, T, .25);
+  bastion(m, T) {                                                      // short and wide: a squat hexagon with a big team shield on top
+    base(m, T, 'bastion');
+    m.cyl(0, H, 0, .28, H + .36, .26, 6, C.stone);
+    for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + .5; m.box(Math.cos(a) * .25 - .045, H + .36, Math.sin(a) * .25 - .045, Math.cos(a) * .25 + .045, H + .46, Math.sin(a) * .25 + .045, C.stoneD); }
+    disc(m, 0, H + .36, 0, .17, .03, T, 6); disc(m, 0, H + .39, 0, .06, .03, C.steel, 8);
   },
-  workshop(m, T) {                                                     // an open timber frame sheltering a battering ram
-    for (const x of [-.27, .27]) for (const z of [-.2, .2]) m.box(x - .03, 0, z - .03, x + .03, .4, z + .03, C.woodD);
-    m.roofZ(-.32, -.25, .32, .25, .4, .16, T, C.woodD);
-    m.box(-.07, .1, -.34, .07, .2, .36, C.trunk, C.wood); m.box(-.09, .08, .32, .09, .22, .42, C.steel);
-    m.box(-.2, 0, -.1, -.14, .12, .1, C.woodD); m.box(.14, 0, -.1, .2, .12, .1, C.woodD);
+
+  // ---- army: violet ----
+  ranger(m, T) {                                                       // a green tent beside a bow
+    base(m, T, 'ranger');
+    m.cyl(.08, H, .06, .2, H + .32, 0, 4, [.3, .55, .32], Math.PI / 4);
+    const pts = [-60, -30, 0, 30, 60].map((d) => [-.14 + Math.cos(d * Math.PI / 180) * .22 - .1, Math.sin(d * Math.PI / 180) * .24]);
+    for (let i = 0; i + 1 < pts.length; i++) m.beam(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], .045, H, H + .06, C.woodD);
+    m.beam(pts[0][0], pts[0][1], pts[4][0], pts[4][1], .015, H + .02, H + .04, C.canvas);
   },
-  lodge(m, T) {                                                        // a round stone hut, team cone roof, blocks stacked outside
-    m.cyl(0, 0, 0, .24, .34, .24, 8, C.stone);
-    m.cyl(0, .34, 0, .3, .72, 0, 8, T);
-    door(m, 0, .05, .2, .24);
-    m.box(.2, 0, .24, .36, .1, .38, C.stoneD); m.box(.22, .1, .26, .34, .19, .36, C.stone);
+  raider(m, T) {                                                       // crossed axes
+    base(m, T, 'raider');
+    m.beam(-.23, -.23, .23, .23, .05, H, H + .05, C.woodD); m.beam(.23, -.23, -.23, .23, .05, H + .05, H + .1, C.woodD);
+    for (const [x, z] of [[-.22, -.22], [.22, -.22]]) m.box(x - .07, H, z - .07, x + .07, H + .12, z + .07, C.steelD);
+    m.cyl(0, H + .1, 0, .06, H + .16, .06, 6, RED);
   },
-  smith(m, T) {                                                        // dark stone, a tall chimney and a glowing forge mouth
-    m.box(-.26, 0, -.2, .2, .32, .2, [.46, .44, .46]);
-    m.roof(-.3, -.24, .24, .24, .32, .12, T, C.woodD);
-    m.box(.06, .3, -.16, .2, .9, -.02, C.stoneD);
-    m.box(-.2, .06, .2, -.02, .22, .24, C.fire);
-    m.box(.2, 0, .16, .36, .1, .3, C.steelD); m.box(.17, .1, .13, .4, .17, .33, C.steel);
+  barracks(m, T) {                                                     // a shield with a sword down it
+    base(m, T, 'barracks');
+    m.cyl(0, H, 0, .25, H + .13, .25, 5, T, -Math.PI / 2, lighten(T, .08));
+    disc(m, 0, H + .13, 0, .07, .04, C.steel, 8);
+    m.beam(0, -.3, 0, .24, .05, H + .17, H + .21, C.steel); m.beam(-.1, -.12, .1, -.12, .04, H + .17, H + .21, C.gold); m.beam(0, .24, 0, .32, .06, H + .17, H + .21, C.woodD);
   },
-  engineer(m, T) {                                                     // a purple workshop with a gear on the wall and a tall crane
-    m.box(-.28, 0, -.2, .1, .3, .2, [.56, .46, .72]);
-    m.roofZ(-.32, -.24, .14, .24, .3, .12, T, C.woodD);
-    gear(m, -.09, .22, .22, .12, C.gold);
-    pole(m, .24, -.06, 0, .98, .025); m.box(.02, .92, -.09, .34, .98, -.03, C.woodD); pole(m, .02, -.06, .62, .92, .008);
-    m.box(-.03, .5, -.09, .07, .62, -.03, C.steelD);
+  hall(m, T) {                                                         // a tall banner on a gold step: the commander
+    base(m, T, 'hall');
+    disc(m, 0, H, 0, .18, .05, C.gold, 10);
+    m.box(-.016, H + .05, -.016, .016, H + .98, .016, C.woodD);
+    m.box(.016, H + .5, -.012, .4, H + .94, .012, T); m.box(.016, H + .5, -.014, .4, H + .56, .014, C.gold);
+    m.blob(0, H + 1.0, 0, .05, .05, .05, C.gold, 0, null, 6, 3);
+  },
+  workshop(m, T) {                                                     // a battering ram on wheels
+    base(m, T, 'workshop');
+    m.beam(0, .24, 0, -.2, .12, H + .07, H + .19, C.trunk, C.wood);
+    m.box(-.09, H + .05, -.31, .09, H + .21, -.2, C.steelD);
+    for (const [x, z] of [[-.16, -.1], [.16, -.1], [-.16, .12], [.16, .12]]) m.box(x - .03, H, z - .05, x + .03, H + .08, z + .05, DARK);
+    m.beam(-.17, -.1, -.17, .12, .03, H + .08, H + .11, C.woodD); m.beam(.17, -.1, .17, .12, .03, H + .08, H + .11, C.woodD);
   },
 
   // ---- pieces walls and gates are made of ----
@@ -154,26 +173,12 @@ export const BUILDING_MODELS = {
   },
   gate(m, T) {
     m.box(-.5, 0, -.22, -.2, .95, .22, C.stone); m.box(.2, 0, -.22, .5, .95, .22, C.stone); m.box(-.5, .66, -.22, .5, .95, .22, C.stone);
-    m.box(-.2, 0, -.14, .2, .64, .14, C.dark);
+    m.box(-.2, 0, -.14, .2, .64, .14, DARK);
     flag(m, 0, 0, .95, 1.4, T, .26);
   },
   trap(m) {
     m.box(-.3, 0, -.3, .3, .03, .3, C.soilD);
     for (const x of [-.14, .14]) for (const z of [-.14, .14]) m.cyl(x, .03, z, .05, .22, 0, 4, C.steel);
-  },
-  ballista(m, T) {                                                     // a round stone plinth carrying a big crossbow with wide arms
-    m.cyl(0, 0, 0, .22, .3, .19, 8, C.stone);
-    m.box(-.04, .3, -.2, .04, .42, .3, C.woodD);
-    m.box(-.34, .38, .1, .34, .46, .18, C.woodD);
-    m.box(-.34, .46, -.02, -.26, .56, .18, C.woodD); m.box(.26, .46, -.02, .34, .56, .18, C.woodD);
-    m.box(-.015, .42, -.1, .015, .46, .44, T);
-  },
-  bastion(m, T) {                                                      // short and wide: a squat drum with a team-coloured flat top
-    m.cyl(0, 0, 0, .36, .66, .3, 10, C.stone);
-    m.cyl(0, .66, 0, .4, .78, .4, 10, C.stoneD);
-    m.cyl(0, .78, 0, .3, .86, .3, 10, T);
-    for (let i = 0; i < 6; i++) { const a = i * TAU / 6; m.box(Math.cos(a) * .36 - .04, .78, Math.sin(a) * .36 - .04, Math.cos(a) * .36 + .04, .9, Math.sin(a) * .36 + .04, C.stoneD); }
-    m.box(-.07, 0, .26, .07, .24, .32, C.dark);
   },
   post(m, T) {
     m.box(-.2, 0, -.2, .2, .7, .2, C.stone);
@@ -183,6 +188,14 @@ export const BUILDING_MODELS = {
     m.box(0, 0, -.14, 1, .6, .14, C.stone);
     m.box(0, .6, -.18, 1, .7, .18, C.stoneD);
   },
+};
+
+// The quarry's glyph, written out here so it reads next to its siblings: a block of cut stone, a smaller one, and a pickaxe.
+BUILDING_MODELS.quarry = (m, T) => {
+  base(m, T, 'quarry');
+  m.box(-.24, H, -.2, .04, H + .24, .08, C.stone); m.box(.0, H, .08, .18, H + .13, .24, C.stoneD);
+  m.beam(-.2, .24, .24, -.16, .045, H + .24, H + .29, C.woodD);
+  m.beam(.12, -.26, .3, -.08, .05, H + .24, H + .31, C.steel);
 };
 
 /** Build the model `id` in `team`'s colours. */

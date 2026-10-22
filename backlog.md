@@ -28,3 +28,8 @@ Ideas and follow-ups, roughly in priority order.
 - Lane objectives: towers placed along each lane that must fall before the next, or a creep wave that follows each lane.
 - Jungle camps between the lanes with a reward (iron, a free officer) for clearing them.
 - Show a unit's production as a tiny icon of the thing being made beside the progress bar.
+- Long-press a building or tile for quick actions (raze, upgrade, march) next to the build menu.
+- Remember the last building picked per category and offer it first in the menu.
+- Drag a building card from the sheet straight onto the map.
+- A tiny "what is this?" label over buildings when zoomed out, since the glyphs are the only cue.
+- Show a building's category colour as a legend in the help screen.

@@ -2,13 +2,14 @@
 // two fingers pan and pinch to zoom; the wheel zooms. Everything it does goes through the player's commands (src/game/commands.js).
 
 import { MAP_SIZE as N, PLAYER } from '../core/config.js';
-import { clamp } from '../core/math.js';
 import { game } from '../core/world.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { buildingAt, inBounds } from '../game/query.js';
 import { paintTile, razeField } from '../game/commands.js';
 import { camera, clampCamera, panBy, pick } from '../render/camera.js';
-import { select, setGhost, setRazeTarget, ui } from './state.js';
+import { canPlace } from '../game/buildings.js';
+import { ghostTile, onGhost, confirmGhost } from './placement.js';
+import { openMenu, select, setGhost, setRazeTarget, ui } from './state.js';
 
 const pointers = new Map();
 let gesture = null;
@@ -24,11 +25,7 @@ function tileFromScreen(x, y) {
 const isPainting = () => ui.mode === 'mark' || (ui.mode === 'build' && !!BUILDINGS[ui.buildType].paint);
 const isPlacing = () => ui.mode === 'build' && !BUILDINGS[ui.buildType].paint;
 
-/** The top-left tile that centres a building of the current type on a ground point. */
-function ghostFor(t) {
-  const size = BUILDINGS[ui.buildType].size;
-  return [clamp(Math.floor(t.x - size / 2 + .5), 0, N - size), clamp(Math.floor(t.z - size / 2 + .5), 0, N - size)];
-}
+const ghostFor = (t) => ghostTile(ui.buildType, t.x, t.z);
 
 /** Paint every tile along the line from the last painted tile to this one (Bresenham), so a fast drag leaves no gaps. */
 function paintAt(x, y) {
@@ -54,7 +51,11 @@ function paintAt(x, y) {
 
 function tap(x, y) {
   const t = tileFromScreen(x, y);
-  if (isPlacing()) { if (t) setGhost(ghostFor(t)); return; }
+  if (isPlacing()) {                                     // the first touch sets the outline down, a second one on it builds
+    if (!t) return;
+    if (onGhost(t.i, t.j)) { if (!confirmGhost()) setGhost(ghostFor(t)); } else setGhost(ghostFor(t));
+    return;
+  }
   if (isPainting()) return;
   const b = t ? buildingAt(t.j * N + t.i) : null;
   if (ui.mode === 'remove') {
@@ -62,7 +63,10 @@ function tap(x, y) {
     setRazeTarget(b && b.team === PLAYER && b.type !== 'keep' ? b : null);
     return;
   }
-  select(b || null);
+  if (b || !t) { select(b || null); return; }
+  select(null);
+  // Open ground on your own side: a menu of what could be built right here.
+  if (canPlace('hut', t.i, t.j)) openMenu({ i: t.i, j: t.j, sx: x, sy: y }); else openMenu(null);
 }
 
 function onDown(e, canvas) {

@@ -45,7 +45,7 @@ export function renderIcons(createCanvas = () => document.createElement('canvas'
     const def = BUILDINGS[type], temporary = def.linkable;
     const mesh = temporary ? linkableMesh(def) : meshes.building[0][type];
     const { center, radius } = boundsOf(mesh.pts);
-    const distance = radius / Math.sin(.36) * 1.02, pitch = .6;
+    const distance = radius / Math.sin(.36) * 1.0, pitch = .95;
     const eye = [center[0] - FORWARD[0] * distance * Math.cos(pitch), center[1] + distance * Math.sin(pitch), center[2] - FORWARD[2] * distance * Math.cos(pitch)];
     setViewProjection(multiply(perspective(.72, 1, .1, 100), lookAt(eye, center)));
     gl.clearColor(0, 0, 0, 0);

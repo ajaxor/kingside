@@ -21,7 +21,7 @@
 //   note              one line shown in the status of a finished one (walls and gates)
 //   barHeight         how high above the ground its health bar floats (default 1)
 //
-// The build tray lists BUILD_MENU in order.
+// The build menu lists BUILD_CATEGORIES (below); BUILD_MENU is every type in that order.
 
 import { BARRACKS_TREE, HALL_TREE, WORKSHOP_TREE } from './upgrades.js';
 
@@ -149,11 +149,23 @@ export const BUILDINGS = {
   },
 };
 
-/** Order of the build tray. */
-export const BUILD_MENU = [
-  'hut', 'lodge', 'mill', 'quarry', 'mine', 'farm', 'field', 'fletch', 'smith', 'engineer', 'tower', 'ballista', 'bastion',
-  'palisade', 'wall', 'gate', 'trap', 'ranger', 'raider', 'barracks', 'hall', 'workshop',
+/**
+ * The build menu's categories, in order. Each has a colour ([r, g, b] 0..1) that is also the colour of the plinth under every building of
+ * that category in the world, so the menu and the map speak the same language.
+ */
+export const BUILD_CATEGORIES = [
+  { id: 'home', icon: 'hut', name: 'Homes', hint: 'Where your builders live', color: [.93, .84, .64], types: ['hut', 'lodge'] },
+  { id: 'gather', icon: 'mill', name: 'Gather', hint: 'Wood, stone, iron and food', color: [.56, .76, .46], types: ['mill', 'quarry', 'mine', 'farm', 'field'] },
+  { id: 'craft', icon: 'smith', name: 'Craft', hint: 'Arrows, weapons and parts', color: [.97, .66, .30], types: ['fletch', 'smith', 'engineer'] },
+  { id: 'defend', icon: 'tower', name: 'Defend', hint: 'Towers, walls and traps', color: [.62, .70, .82], types: ['tower', 'ballista', 'bastion', 'palisade', 'wall', 'gate', 'trap'] },
+  { id: 'army', icon: 'barracks', name: 'Army', hint: 'Train troops and siege', color: [.70, .56, .82], types: ['ranger', 'raider', 'barracks', 'hall', 'workshop'] },
 ];
+
+/** Every buildable type, in menu order. */
+export const BUILD_MENU = BUILD_CATEGORIES.flatMap((c) => c.types);
+
+/** The category a building type is listed under (the keep belongs to none). */
+export const categoryOf = (type) => BUILD_CATEGORIES.find((c) => c.types.includes(type)) || null;
 
 // Questions asked of a building type.
 export const isLinkable = (type) => !!BUILDINGS[type].linkable;

@@ -24,8 +24,8 @@ The game is made of ES modules, which browsers will not load from `file://`, so 
 | `src/data/` | **the game's content as data**: `units`, `buildings`, `upgrades` (trees), `resources`, `goods`, `terrain`, `balance`, `ai`, `map`, `help` |
 | `src/game/` | the rules: map generation (a river and three lanes), lanes and who walks them, pathing, movement, units, buildings and their per-step behaviour, the computer player, the player's commands, one simulation `tick` |
 | `src/game/brains/` | one behaviour per kind of unit (builder, gatherer, runner, farmer, patrol, troop, siege); a unit's data names its brain |
-| `src/render/` | WebGL: `gl/` (context and the flat three-band shader, optional tilt-shift blur, matrices), `models/` (every building (one tile, body inset so people can walk round it), unit (cylinder, dome, round head, one tool or hat) and prop, kept deliberately plain), `terrain.js` (the static ground mesh, and the merged, rounded resource patches rebuilt as they are worked), `scene.js` (a frame), `camera.js`, `icons.js` (build tray pictures) |
-| `src/ui/` | page markup, resource bar, build tray, context panel, input, toasts, end card, title screen |
+| `src/render/` | WebGL: `gl/` (context and the flat three-band shader, optional tilt-shift blur, matrices), `models/` (every building (one tile: a team ring, a category-coloured plinth and one bold pictogram), unit (cylinder, dome, round head, one tool or hat) and prop, kept deliberately plain), `terrain.js` (the static ground mesh, and the merged, rounded resource patches rebuilt as they are worked), `scene.js` (a frame), `camera.js`, `icons.js` (build tray pictures) |
+| `src/ui/` | page markup, resource bar, build dock, sheet and tap-to-build menu (two-touch placement), context panel, input, toasts, end card, title screen |
 | `tools/` | `stamp.mjs` writes `build-info.js` from git; `serve.mjs` is the dev server |
 | `tests/` | `node --test` |
 

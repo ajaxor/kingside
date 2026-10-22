@@ -7,5 +7,5 @@ export const HOW_TO_PLAY = {
     { color: 'var(--food)', text: 'Farmers plant and harvest fields. Fletchers stock towers and arm archers, blacksmiths arm the barracks, and engineers supply crossbow and siege parts.' },
     { color: 'var(--red)', text: "Soldiers march the moment they are trained, unless an officer is waiting in the hall's courtyard to gather a band. Upgrade the hall for bigger or specialist bands, or generals. Burn the red keep." },
   ],
-  controls: 'Drag to look around, pinch to zoom. While marking or drawing walls, move the view with two fingers.',
+  controls: 'Drag to look around, pinch to zoom. Tap open ground to pick something to build there, then touch the outline again to build it. While marking or drawing walls, move the view with two fingers.',
 };

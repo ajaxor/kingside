@@ -41,6 +41,19 @@ export class MeshBuilder {
     this.quad([x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0], col, ctr);
   }
 
+  /** A bar from (ax, az) to (bx, bz) in plan, `w` wide, from height y0 to y1: a box at any angle, for diagonals in a top-down glyph. */
+  beam(ax, az, bx, bz, w, y0, y1, col, top) {
+    const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz) || 1, nx = -dz / len * w / 2, nz = dx / len * w / 2;
+    const P = [[ax + nx, az + nz], [ax - nx, az - nz], [bx - nx, bz - nz], [bx + nx, bz + nz]];
+    const ctr = [(ax + bx) / 2, (y0 + y1) / 2, (az + bz) / 2], t = top || col;
+    this.quad([P[0][0], y1, P[0][1]], [P[1][0], y1, P[1][1]], [P[2][0], y1, P[2][1]], [P[3][0], y1, P[3][1]], t, ctr);
+    if (y0 > .001) this.quad([P[0][0], y0, P[0][1]], [P[1][0], y0, P[1][1]], [P[2][0], y0, P[2][1]], [P[3][0], y0, P[3][1]], col, ctr);
+    for (let i = 0; i < 4; i++) {
+      const a = P[i], b = P[(i + 1) % 4];
+      this.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], col, ctr);
+    }
+  }
+
   /** A gabled roof with its ridge along x. `ecol` colours the gable ends. */
   roof(x0, z0, x1, z1, y, h, col, ecol) {
     const zm = (z0 + z1) / 2, ctr = [(x0 + x1) / 2, y + h * .3, zm];

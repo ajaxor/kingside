@@ -1,4 +1,4 @@
-// The game's page: the canvas, resource bar, toasts, context panel and build tray. Built once by boot() and hidden behind the title screen
+// The game's page: the canvas, resource bar, toasts, context panel and the build dock, sheet and menu. Built once by boot() and hidden behind the title screen
 // (body.in-menu in style.css). Everything else finds its elements by id.
 
 const MARKUP = `
@@ -13,15 +13,17 @@ const MARKUP = `
   </div>
 </div>
 <div id="toasts"></div>
+<div id="locmenu" hidden></div>
 <div id="bot">
+  <div id="sheet" hidden></div>
   <div id="ctx" hidden></div>
-  <div id="tray">
+  <div id="dock">
     <div id="modes">
       <button class="mode on" data-mode="look">Look</button>
       <button class="mode" data-mode="mark">Mark</button>
       <button class="mode rm" data-mode="remove">Raze</button>
     </div>
-    <div id="pal"></div>
+    <div id="cats"></div>
   </div>
 </div>
 <div id="ov" hidden><div id="card"></div></div>`;
