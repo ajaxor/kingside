@@ -1,4 +1,4 @@
-// The camera looks down at the map at a fixed compass angle and can pan, zoom, and tell which ground point is under a screen point.
+// The camera looks steeply down at the map (about 70 degrees) at a fixed compass angle and can pan, zoom, and tell which ground point is under a screen point.
 
 import { MAP_SIZE } from '../core/config.js';
 import { clamp, cross3, norm3, sub3 } from '../core/math.js';
@@ -9,7 +9,7 @@ export const FORWARD = [Math.SQRT1_2, 0, -Math.SQRT1_2];     // the compass dire
 export const MIN_ZOOM = 8, MAX_ZOOM = 56;
 
 /** tx, tz: the ground point at the screen centre; D: distance from it; pitch: angle above the ground. width/height: the screen, in CSS pixels. */
-export const camera = { tx: 0, tz: 0, D: 17, pitch: .94, width: 1, height: 1 };
+export const camera = { tx: 0, tz: 0, D: 17, pitch: 1.22, width: 1, height: 1 };
 
 export function cameraEye() {
   const c = Math.cos(camera.pitch), s = Math.sin(camera.pitch);

@@ -23,3 +23,8 @@ Ideas and follow-ups, roughly in priority order.
 - Show how much is left in a node when hovering it (a tooltip with harvests remaining).
 - Per-kind harvest yield and tool upgrades so rock gets faster to clear later in a game.
 - Let people visibly queue and step aside on a shared building rim.
+- Show all three lanes faintly on the map (not just the one a barracks would use), with a toggle, so the layout is clear before building.
+- Let the player re-assign an existing barracks to another lane without rebuilding it.
+- Lane objectives: towers placed along each lane that must fall before the next, or a creep wave that follows each lane.
+- Jungle camps between the lanes with a reward (iron, a free officer) for clearing them.
+- Show a unit's production as a tiny icon of the thing being made beside the progress bar.

@@ -59,6 +59,7 @@ export function spawnUnit(b, kind) {
     face: 0, anim: random() * 9, carry: null, target: null, targetBuilding: null, scanTimer: 0, buildingScanTimer: 0, chaseTimer: 0,
     job: null, claimTile: -1, moving: false, working: false, hitTimer: 0, dead: false,
     leader: null, followers: [], patience: 0, rally: null, commandTimer: 0,
+    lane: b.lane || null, laneStep: null,       // the lane it marches down, and the waypoint it is heading for (found when it first needs it)
   };
   if (isTroop(kind)) {
     if (def.command) {

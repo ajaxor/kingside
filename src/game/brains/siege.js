@@ -5,7 +5,7 @@ import { UNITS } from '../../data/units.js';
 import { isLinkable, usesArrows } from '../../data/buildings.js';
 import { buildings, arrows, teams } from '../../core/world.js';
 import { centerX, centerZ, distToBuilding, isGone, isPlanOnly, opponent } from '../query.js';
-import { goToBuilding, walk } from '../movement.js';
+import { marchOnKeep } from '../lanes.js';
 import { attackBuilding, nearestEnemyBuilding } from './fighting.js';
 
 const RAM_SIGHT = 1.8, RAM_REACH = 1.1, SCAN_EVERY = { ram: .6, artillery: .5 };
@@ -62,7 +62,5 @@ export function thinkSiege(u, dt) {
   }
   const enemyKeep = teams[opponent(u.team)].keep;
   if (isGone(enemyKeep)) return;
-  if (!u.goal && !u.path) goToBuilding(u, enemyKeep, true);
-  const r = walk(u, dt);
-  if (r === 1) u.targetBuilding = enemyKeep;
+  if (marchOnKeep(u, dt) === 1) u.targetBuilding = enemyKeep;
 }

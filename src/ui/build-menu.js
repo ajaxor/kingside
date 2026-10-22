@@ -5,15 +5,16 @@ import { BUILDINGS, BUILD_MENU } from '../data/buildings.js';
 import { canAfford } from '../game/economy.js';
 import { icons } from '../render/icons.js';
 import { $ } from './dom.js';
+import { itemIcon } from './items.js';
 import { onUiChange, setMode, ui } from './state.js';
 
 export const costHtml = (cost, stock) => Object.keys(cost).filter((r) => cost[r] > 0)
-  .map((r) => `<span class="${stock && stock[r] < cost[r] ? 'short' : ''}"><i class="ic ${r}"></i>${cost[r]}</span>`).join('') || '<span>Free</span>';
+  .map((r) => `<span class="${stock && stock[r] < cost[r] ? 'short' : ''}">${itemIcon(r)}${cost[r]}</span>`).join('') || '<span>Free</span>';
 
 export function buildPalette() {
   $('#pal').innerHTML = BUILD_MENU.map((type) => {
     const def = BUILDINGS[type];
-    const cost = Object.keys(def.cost).map((r) => `<i class="ic ${r}"></i>${def.cost[r]}`).join(' ');
+    const cost = Object.keys(def.cost).map((r) => `${itemIcon(r)}${def.cost[r]}`).join(' ');
     return `<button class="bb" data-b="${type}"><img alt="" src="${icons[type] || ''}"><span class="nm">${def.shortName || def.name}</span><span class="cc">${cost}</span></button>`;
   }).join('');
 }

@@ -10,6 +10,7 @@ import { BUILDINGS } from '../data/buildings.js';
 import { canAfford, pay } from './economy.js';
 import { canPlace, canTill, placeBuilding, tillField, upgradeBuilding } from './buildings.js';
 import { centerX, centerZ, inBounds, opponent } from './query.js';
+import { laneFor } from './lanes.js';
 
 /** How many tiles of one node kind lie within r tiles (a square) of a point. */
 function countNodes(x, z, r, kind) {
@@ -27,7 +28,7 @@ function findSpot(team, type) {
   for (let t = 0; t < AI.placeAttempts; t++) {
     const angle = random() * 6.283, r = minR + random() * (maxR - minR);
     const i = Math.floor(kx + Math.cos(angle) * r - size / 2 + .5), j = Math.floor(kz + Math.sin(angle) * r - size / 2 + .5);
-    if (!canPlace(type, i, j, true)) continue;
+    if (!canPlace(type, i, j, true, team)) continue;
     const px = i + size / 2, pz = j + size / 2;
     let score = -Math.hypot(px - kx, pz - kz) * .5 + random();
     const near = PLACEMENT_NEAR[type];
@@ -35,6 +36,10 @@ function findSpot(team, type) {
     if (FRONT_LINE.has(type)) {                    // toward the enemy keep
       const ex = centerX(enemyKeep), ez = centerZ(enemyKeep), toEnemy = Math.hypot(ex - kx, ez - kz);
       score += ((ex - kx) * (px - kx) + (ez - kz) * (pz - kz)) / toEnemy * 1.1;
+    }
+    if (BUILDINGS[type].training) {                // spread its trainers over the lanes: fewer already on a lane is better
+      const lane = laneFor(team, px, pz).id;
+      score -= buildings.filter((b) => b.team === team && b.lane === lane).length * 1.5;
     }
     if (score > bestScore) { bestScore = score; best = [i, j]; }
   }
@@ -53,7 +58,7 @@ function tillAroundFarms(team) {
     for (let t = 0; t < 12 && plots < AI.fieldsPerFarm && canAfford(team, fieldCost); t++) {
       const i = Math.floor(bx + (random() - .5) * 8), j = Math.floor(bz + (random() - .5) * 8);
       if (Math.hypot(i + .5 - bx, j + .5 - bz) < b.size / 2 + 1.2) continue;
-      if (canTill(i, j)) { pay(team, fieldCost); tillField(i, j, team); plots++; }
+      if (canTill(i, j, team)) { pay(team, fieldCost); tillField(i, j, team); plots++; }
     }
   }
 }

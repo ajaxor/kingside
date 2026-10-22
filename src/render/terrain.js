@@ -52,23 +52,63 @@ export function buildTerrain() {
   return m;
 }
 
-// How a resource tile looks: its height when nearly empty and when full, its side colour, and its top colours (one chosen per tile).
+// How a resource tile looks: its height when nearly empty and when full, its side colour, its top colours (patches of two), and how round
+// the outside corners of a patch are (a fraction of a tile, at most .5) and how many facets each rounded corner has. Trees are the roundest.
 const NODE_LOOK = {
-  [NODE.TREE]: { low: .14, high: .4, side: C.pine, tops: [C.leaf, C.leaf2] },
-  [NODE.STONE]: { low: .1, high: .5, side: C.rockD, tops: [C.rock, C.stone] },
-  [NODE.ORE]: { low: .1, high: .42, side: C.iron, tops: [[.86, .56, .4], [.92, .62, .44]] },
+  [NODE.TREE]: { low: .14, high: .4, side: C.pine, tops: [C.leaf, C.leaf2], round: .46, facets: 5 },
+  [NODE.STONE]: { low: .1, high: .5, side: C.rockD, tops: [C.rock, C.stone], round: .12, facets: 2 },
+  [NODE.ORE]: { low: .1, high: .42, side: C.iron, tops: [[.86, .56, .4], [.92, .62, .44]], round: .18, facets: 3 },
 };
-const GAP = .05;
 
-/** Every standing tree, rock and ore tile as a prism, shrunk to what is left in it. */
+// A tile's four corners in walking order round it, with the side that follows each and the neighbour across that side; `from`..`to` is
+// the arc's angle, which runs the other way at alternate corners.
+const CORNERS = [
+  { sx: -1, sz: -1, a0: 0, a1: Math.PI / 2 }, { sx: 1, sz: -1, a0: Math.PI / 2, a1: 0 },
+  { sx: 1, sz: 1, a0: 0, a1: Math.PI / 2 }, { sx: -1, sz: 1, a0: Math.PI / 2, a1: 0 },
+];
+const SIDE_NEIGHBOUR = [[0, -1], [1, 0], [0, 1], [-1, 0]];     // across the side after corner 0, 1, 2, 3
+
+/**
+ * Every standing tree, rock and ore tile, merged: neighbouring tiles of one kind join into a single shape (no seam, no wall between
+ * them), the outside corners of the shape are rounded, and each tile is as tall as what is left in it, so a patch visibly wears down as it
+ * is worked and a tile vanishes when cleared.
+ */
 export function buildNodes() {
   const m = new MeshBuilder();
+  const same = (i, j, kind) => inBounds(i, j) && nodeKind[j * N + i] === kind;
+  const heightAt = (i, j, look, kind) => look.low + (look.high - look.low) * Math.min(1, nodeLeft[j * N + i] / NODE_INFO[kind].amount);
   for (let k = 0; k < N * N; k++) {
     const kind = nodeKind[k];
     if (!kind) continue;
-    const i = k % N, j = (k / N) | 0, look = NODE_LOOK[kind], left = Math.min(1, nodeLeft[k] / NODE_INFO[kind].amount);
-    const h = look.low + (look.high - look.low) * left, top = look.tops[hash(i, j, kind) < .5 ? 0 : 1];
-    m.box(i + GAP, 0, j + GAP, i + 1 - GAP, h, j + 1 - GAP, look.side, top);
+    const i = k % N, j = (k / N) | 0, look = NODE_LOOK[kind], h = heightAt(i, j, look, kind);
+    const top = look.tops[hash(i >> 1, j >> 1, kind) < .5 ? 0 : 1], mid = [i + .5, h / 2, j + .5], r = look.round;
+    // The outline: for each corner, an arc if both sides at it face open ground (or another kind), else the corner itself.
+    const corners = CORNERS.map(({ sx, sz, a0, a1 }, c) => {
+      const px = i + (sx > 0 ? 1 : 0), pz = j + (sz > 0 ? 1 : 0);
+      if (same(i + sx, j, kind) || same(i, j + sz, kind)) return [[px, pz]];
+      const cx = px - sx * r, cz = pz - sz * r, pts = [];
+      for (let f = 0; f <= look.facets; f++) {
+        const a = a0 + (a1 - a0) * f / look.facets;
+        pts.push([cx + sx * Math.cos(a) * r, cz + sz * Math.sin(a) * r]);
+      }
+      return pts;
+    });
+    const ring = corners.flat();
+    for (let n = 0; n < ring.length; n++) {                 // the top, as a fan from the middle
+      const a = ring[n], b = ring[(n + 1) % ring.length];
+      m.tri([i + .5, h, j + .5], [a[0], h, a[1]], [b[0], h, b[1]], top, [i + .5, h - 1, j + .5]);
+    }
+    const wall = (a, b, y0) => m.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], h, b[1]], [a[0], h, a[1]], look.side, mid);
+    for (let c = 0; c < 4; c++) {
+      const arc = corners[c];
+      for (let n = 0; n + 1 < arc.length; n++) wall(arc[n], arc[n + 1], 0);      // round the corner
+      const [di, dj] = SIDE_NEIGHBOUR[c], from = arc[arc.length - 1], to = corners[(c + 1) % 4][0];
+      if (!same(i + di, j + dj, kind)) wall(from, to, 0);                         // an open side: a wall to the ground
+      else {
+        const lower = heightAt(i + di, j + dj, look, kind);                       // a joined side: only a step down to a lower neighbour
+        if (lower < h) wall(from, to, lower);
+      }
+    }
   }
   return m;
 }

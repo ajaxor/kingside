@@ -1,12 +1,13 @@
-// Map generation: a winding river with fords, forests, stone and ore, and a mirror-image start for each side.
+// Map generation: a winding river (the centre line), three lanes that cross it at fords, forests, stone and ore, and a mirror-image start
+// for each side. Forest walls keep the lanes apart; the river splits the map into the two sides builders are confined to.
 // Everything is drawn from one seed, so the same seed always gives the same map.
 
 import { MAP_SIZE as N } from '../core/config.js';
 import { makeNoise, mulberry } from '../core/random.js';
 import { BUILDINGS } from '../data/buildings.js';
-import { MAP_GEN } from '../data/map.js';
+import { LANES, MAP_GEN } from '../data/map.js';
 import { NODE, NODE_INFO, TERRAIN } from '../data/terrain.js';
-import { ground, nearWater, nodeKind, nodeLeft, road, tileRandom, grassNoise } from '../core/world.js';
+import { ground, nearWater, nodeKind, nodeLeft, road, territory, tileRandom, grassNoise } from '../core/world.js';
 import { inBounds } from './query.js';
 
 const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -23,16 +24,17 @@ export function generateMap(seed) {
   const [n1, n2, n3, n4, n5] = [0, 1, 2, 3, 4].map(() => makeNoise(rng));
   const phase1 = rng() * 6.28, phase2 = rng() * 6.28;
   const K = N / 48;                                  // the river and fords were designed for a 48-tile map
-  const fords = [N * .24 + rng() * 3 * K, N * .5 + (rng() - .5) * 4 * K, N * .76 - rng() * 3 * K];
 
-  // The river runs corner to corner. u is the distance along the diagonal and v the distance across it.
+  // The river runs corner to corner. u is the distance along the diagonal and v the distance across it. Which side of its middle a tile
+  // is on decides whose half it is. (Fords are cut where the lanes cross it, below.)
   for (let j = 0; j < N; j++) {
     for (let i = 0; i < N; i++) {
       const k = j * N + i, x = i + .5, z = j + .5;
       const u = (x + z) / 2, v = (x - z) / Math.SQRT2;
       const centre = v - 3.2 * K * Math.sin(u / K * .16 + phase1) - 1.4 * K * Math.sin(u / K * .37 + phase2);
       const halfWidth = MAP_GEN.riverWidth + .4 * n4(i * .2, j * .2);
-      if (Math.abs(centre) < halfWidth) ground[k] = fords.some((f) => Math.abs(u - f) < 1.25) ? TERRAIN.FORD : TERRAIN.WATER;
+      if (Math.abs(centre) < halfWidth) ground[k] = TERRAIN.WATER;
+      territory[k] = centre < 0 ? 0 : 1;
       tileRandom[k] = rng();
       grassNoise[k] = n5(i * .11, j * .11);
     }
@@ -54,6 +56,30 @@ export function generateMap(seed) {
     }
   }
 
+  // Where each lane runs, for every tile: how far it is from the nearest one.
+  const laneDist = new Float32Array(N * N).fill(1e9);
+  for (const lane of LANES) {
+    for (let s = 0; s + 1 < lane.points.length; s++) {
+      const [ax, az] = lane.points[s], [bx, bz] = lane.points[s + 1], dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz || 1;
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const t = Math.max(0, Math.min(1, ((i + .5 - ax) * dx + (j + .5 - az) * dz) / len2));
+        const d = Math.hypot(i + .5 - (ax + dx * t), j + .5 - (az + dz * t));
+        if (d < laneDist[j * N + i]) laneDist[j * N + i] = d;
+      }
+    }
+  }
+
+  // Forest walls along the lanes, so they read as separate corridors. They thin out near the keeps, so a base opens onto all three.
+  const keepCenter = playerKeepCenter();
+  const keeps = [keepCenter, mirror(keepCenter[0], keepCenter[1])];
+  const [wallNear, wallFar] = MAP_GEN.laneWall;
+  for (let k = 0; k < N * N; k++) {
+    if (ground[k] || laneDist[k] < wallNear || laneDist[k] > wallFar) continue;
+    const x = k % N + .5, z = ((k / N) | 0) + .5;
+    if (keeps.some(([kx, kz]) => Math.hypot(x - kx, z - kz) < MAP_GEN.laneWallFreeRadius) || rng() > MAP_GEN.laneWallChance) continue;
+    nodeKind[k] = NODE.TREE; nodeLeft[k] = NODE_INFO[NODE.TREE].amount;
+  }
+
   // A cluster of each kind near each keep, and clear ground around the keeps.
   const sprinkle = (x, z, radius, kind, amount) => {
     for (let j = Math.floor(z - radius); j <= z + radius; j++) {
@@ -65,7 +91,6 @@ export function generateMap(seed) {
       }
     }
   };
-  const keepCenter = playerKeepCenter();
   for (const side of [0, 1]) {
     const place = (x, z) => (side ? mirror(x, z) : [x, z]);
     const [kx, kz] = place(keepCenter[0], keepCenter[1]);
@@ -76,50 +101,9 @@ export function generateMap(seed) {
     }
   }
 
-  // Carve a trail from each keep to every ford so the map can always be crossed.
-  const enemyKeep = mirror(keepCenter[0], keepCenter[1]);
-  for (const f of fords) {
-    let best = -1, bestScore = 1e9;
-    for (let k = 0; k < N * N; k++) {
-      if (ground[k] !== TERRAIN.FORD) continue;
-      const x = k % N + .5, z = ((k / N) | 0) + .5, u = (x + z) / 2, v = Math.abs((x - z) / Math.SQRT2);
-      const score = Math.abs(u - f) * 3 + v;
-      if (score < bestScore) { bestScore = score; best = k; }
-    }
-    if (best < 0) continue;
-    const fx = best % N, fz = (best / N) | 0;
-    carveTrail(keepCenter[0], keepCenter[1], fx, fz);
-    carveTrail(enemyKeep[0], enemyKeep[1], fx, fz);
-  }
-}
-
-/** Cheapest walk from (x0, z0) to tile (x1, z1) over dry land; any trees or stone on the way are cleared and the tiles become trail. */
-function carveTrail(x0, z0, x1, z1) {
-  const start = Math.floor(z0) * N + Math.floor(x0), goal = z1 * N + x1;
-  const dist = new Float32Array(N * N).fill(1e9), parent = new Int32Array(N * N).fill(-1);
-  dist[start] = 0;
-  const open = [start];
-  while (open.length) {
-    let bi = 0;
-    for (let i = 1; i < open.length; i++) if (dist[open[i]] < dist[open[bi]]) bi = i;
-    const k = open[bi];
-    open[bi] = open[open.length - 1]; open.pop();
-    if (k === goal) break;
-    const i = k % N, j = (k / N) | 0;
-    for (const [dx, dz] of NEIGHBOURS) {
-      const ni = i + dx, nj = j + dz;
-      if (!inBounds(ni, nj)) continue;
-      const nk = nj * N + ni;
-      if (ground[nk] === TERRAIN.WATER) continue;
-      const cost = 1 + (nodeKind[nk] ? 6 : 0) + (road[nk] ? -.5 : 0) + tileRandom[nk] * .6;
-      if (dist[k] + cost < dist[nk]) {
-        if (dist[nk] >= 1e9) open.push(nk);
-        dist[nk] = dist[k] + cost; parent[nk] = k;
-      }
-    }
-  }
-  for (let k = goal; k >= 0; k = parent[k]) {
-    if (ground[k] === TERRAIN.LAND) { nodeKind[k] = NODE.NONE; road[k] = 1; }
-    if (k === start) break;
+  // Cut the lanes: a cleared road, and a ford where the river crosses (the only places it can be crossed).
+  for (let k = 0; k < N * N; k++) {
+    if (laneDist[k] < MAP_GEN.laneFord && ground[k] === TERRAIN.WATER) ground[k] = TERRAIN.FORD;
+    if (laneDist[k] < MAP_GEN.laneRoad && ground[k] !== TERRAIN.WATER) { nodeKind[k] = NODE.NONE; nodeLeft[k] = 0; if (ground[k] === TERRAIN.LAND) road[k] = 1; }
   }
 }

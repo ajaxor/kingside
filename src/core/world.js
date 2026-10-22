@@ -17,6 +17,7 @@ export const fieldAge = new Float32Array(TILES);      // seconds a planted plot 
 export const yardOwner = new Int32Array(TILES);       // id of the officer hall whose courtyard this tile is part of
 export const occupant = new Int32Array(TILES);        // id of the building standing on the tile (0 = none)
 export const road = new Uint8Array(TILES);            // a trail carved between the keeps and the fords
+export const territory = new Uint8Array(TILES);       // which side of the river the tile is on: 0 = the player's half, 1 = the enemy's (builders may only build on their own)
 export const nearWater = new Uint8Array(TILES);       // land next to water (drawn sandy)
 export const tileRandom = new Float32Array(TILES);    // per-tile random number (path-cost tiebreak)
 export const grassNoise = new Float32Array(TILES);    // smooth noise for drawing the grass
@@ -47,7 +48,7 @@ export function makeTeam(ai) {
 
 /** Clear everything for a new game. `ai` says which sides the computer plays. */
 export function resetWorld(seed, ai = [false, true]) {
-  for (const a of [ground, nodeKind, nodeLeft, marked, claims, field, fieldAge, yardOwner, occupant, road, nearWater, tileRandom, grassNoise]) a.fill(0);
+  for (const a of [ground, nodeKind, nodeLeft, marked, claims, field, fieldAge, yardOwner, occupant, road, territory, nearWater, tileRandom, grassNoise]) a.fill(0);
   fieldTeam.fill(-1);
   field.fill(FIELD.NONE);
   for (const u of unreachable) u.fill(0);

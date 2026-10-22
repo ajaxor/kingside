@@ -6,12 +6,13 @@ import { RESOURCES, RESOURCE_IDS } from '../data/resources.js';
 import { GAME_SPEEDS } from '../data/balance.js';
 import { focusOn } from '../render/camera.js';
 import { $ } from './dom.js';
+import { itemIcon } from './items.js';
 
 export const hudOptions = { blur: false };     // tilt-shift is optional: the flat look reads best sharp
 
 /** Build the stockpile pills and wire the buttons. */
 export function initHud() {
-  $('#stock').innerHTML = RESOURCE_IDS.map((r) => `<div class="res" title="${RESOURCES[r].name}"><i class="ic ${r}"></i><b id="res-${r}">0</b></div>`).join('')
+  $('#stock').innerHTML = RESOURCE_IDS.map((r) => `<div class="res" title="${RESOURCES[r].name}">${itemIcon(r)}<b id="res-${r}">0</b></div>`).join('')
     + '<button class="tbtn" id="bSpd" aria-label="Game speed">1×</button><button class="tbtn" id="bPause" aria-label="Pause">❚❚</button>';
   $('#kbP').onclick = () => { if (teams[PLAYER]?.keep) focusOn(teams[PLAYER].keep); };
   $('#kbE').onclick = () => { if (teams[ENEMY]?.keep) focusOn(teams[ENEMY].keep); };

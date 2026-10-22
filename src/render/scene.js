@@ -1,7 +1,7 @@
 // Draws one frame of the world: terrain, buildings (with walls joined up and plans shown as foundations), fields, units, markers,
 // arrows, health bars, and a blended pass of shadows, rings, dust and the placement ghost. Reads the world; changes nothing in it.
 
-import { MAP_SIZE as N } from '../core/config.js';
+import { MAP_SIZE as N, PLAYER } from '../core/config.js';
 import { BUILDINGS, isLinkable, usesArrows } from '../data/buildings.js';
 import { UNITS } from '../data/units.js';
 import { RESOURCES, RESOURCE_IDS } from '../data/resources.js';
@@ -11,6 +11,8 @@ import { CROP_GROW_SECONDS } from '../data/balance.js';
 import { buildings, buildingsById, units, arrows, effects, field, fieldAge, nodeKind, marked, occupant, game } from '../core/world.js';
 import { centerX, centerZ, inBounds, isPlanOnly } from '../game/query.js';
 import { canPlace } from '../game/buildings.js';
+import { laneFor, laneRoute } from '../game/lanes.js';
+import { productionOf } from '../game/production.js';
 import { C, TEAM_COLORS, HEALTH_COLORS } from './palette.js';
 import { camera, cameraEye, FOV } from './camera.js';
 import { lookAt, multiply, perspective } from './gl/matrix.js';
@@ -24,7 +26,7 @@ const PLAN_TINT = [.86, .78, .6], HIT_TINT = [1, 1, 1], SHADOW = [.18, .2, .35];
 const GHOST_OK = [.45, .9, .5], GHOST_BAD = [.95, .35, .3];
 
 let terrainMesh = null, nodesMesh = null, nodesBuiltAt = 0;
-const NODES_REBUILD_SECONDS = .15;        // harvesting marks the resource tiles dirty often; they are cheap to rebuild but not free
+const NODES_REBUILD_SECONDS = .3;         // harvesting marks the resource tiles dirty often; they are cheap to rebuild but not free
 
 /** What the scene needs to know about the UI: `selected` and `razeTarget` buildings, `ghost` ({ type, i, j }) while placing, `blur` for tilt-shift. */
 export function render(view) {
@@ -73,9 +75,37 @@ export function render(view) {
   }
   if (view.selected && !view.selected.dead) drawRing(view.selected, [.95, .8, .35], .9);
   if (view.razeTarget && !view.razeTarget.dead) drawRing(view.razeTarget, [.95, .35, .3], .9);
+  const lane = laneToLight(view);
+  if (lane) drawLane(lane, now);
   if (view.ghost) drawGhost(view.ghost);
   setDepthWrite(true); setBlending(false);
   if (view.blur) endScene(camera.D);
+}
+
+/** The lane to light up: the one the building being placed would send its troops down, or the selected trainer's. */
+function laneToLight(view) {
+  if (view.ghost && BUILDINGS[view.ghost.type].training) {
+    const size = BUILDINGS[view.ghost.type].size;
+    return laneFor(PLAYER, view.ghost.i + size / 2, view.ghost.j + size / 2).id;
+  }
+  return view.selected && !view.selected.dead && view.selected.team === PLAYER ? view.selected.lane : null;
+}
+
+/** A glowing ribbon along a lane, in the order the player's troops walk it, with a bright pulse running down it. */
+function drawLane(id, now) {
+  const route = laneRoute(PLAYER, id), cube = meshes.prop.cube, glow = [1, .82, .22];
+  let walked = 0;
+  const total = route.reduce((sum, p, n) => sum + (n ? Math.hypot(p[0] - route[n - 1][0], p[1] - route[n - 1][1]) : 0), 0);
+  const pulse = (now * 14) % total;
+  for (let n = 1; n < route.length; n++) {
+    const [ax, az] = route[n - 1], [bx, bz] = route[n], len = Math.hypot(bx - ax, bz - az), rot = Math.atan2(-(bz - az), bx - ax);
+    drawMesh(cube, (ax + bx) / 2, .045, (az + bz) / 2, rot, len + .3, .03, 1.7, glow, 1, .85);
+    if (pulse >= walked && pulse < walked + len) {
+      const t = (pulse - walked) / len;
+      drawMesh(cube, ax + (bx - ax) * t, .06, az + (bz - az) * t, rot, 1.6, .04, 1.7, [1, .97, .75], 1, .9);
+    }
+    walked += len;
+  }
 }
 
 function drawBar(x, y, z, width, fraction, color) {
@@ -192,7 +222,11 @@ function drawBars() {
       let have = 0, need = 0;
       for (const r of RESOURCE_IDS) { have += b.have[r]; need += b.need[r]; }
       drawBar(centerX(b), top * .7, centerZ(b), b.size * .5, b.progress > 0 ? b.progress : have / (need || 1), b.progress > 0 ? [.95, .78, .3] : [.75, .68, .55]);
-    } else if (b.built && b.hp < b.maxHp) drawBar(centerX(b), top, centerZ(b), Math.min(1, b.size * .5), b.hp / b.maxHp, HEALTH_COLORS[b.team]);
+    } else if (b.built) {
+      if (b.hp < b.maxHp) drawBar(centerX(b), top, centerZ(b), Math.min(1, b.size * .5), b.hp / b.maxHp, HEALTH_COLORS[b.team]);
+      const work = productionOf(b);                    // what it is making (a unit, a worker, goods or income), above any health bar
+      if (work) drawBar(centerX(b), top + .13, centerZ(b), Math.min(1, b.size * .5 + .1), Math.max(.02, work.fraction), work.stalled ? [.95, .62, .3] : [.42, .86, .78]);
+    }
   }
 }
 

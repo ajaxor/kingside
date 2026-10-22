@@ -1,7 +1,7 @@
 // The panel above the tray: instructions and costs for the tool in use, or details, upgrades and buttons for the building you tapped.
 // Its text is built from the data (src/data/) and the building's state (status.js); buttons call the player's commands (src/game/commands.js).
 
-import { PLAYER } from '../core/config.js';
+import { MAP_SIZE as N, PLAYER } from '../core/config.js';
 import { game, teams } from '../core/world.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { TEAM_COLORS } from '../render/palette.js';
@@ -11,6 +11,9 @@ import { clearMarks, marchNow, planBuilding, razeBuilding, upgradeForPlayer } fr
 import { $ } from './dom.js';
 import { costHtml } from './build-menu.js';
 import { buildingStatus } from './status.js';
+import { slotsHtml } from './slots.js';
+import { laneFor, laneById } from '../game/lanes.js';
+import { territory } from '../core/world.js';
 import { changed, onUiChange, select, setGhost, setMode, setRazeTarget, ui } from './state.js';
 
 const isPainting = () => ui.mode === 'mark' || (ui.mode === 'build' && !!BUILDINGS[ui.buildType].paint);
@@ -35,10 +38,13 @@ function describe() {
   }
   if (ui.mode === 'build') {
     const def = BUILDINGS[ui.buildType], ghost = ui.ghost, ok = ghost && canPlace(ui.buildType, ghost[0], ghost[1]);
+    const lane = ghost && def.training ? laneFor(PLAYER, ghost[0] + def.size / 2, ghost[1] + def.size / 2) : null;
+    const across = ghost && !ok && territory[ghost[1] * N + ghost[0]] !== PLAYER;
     return {
       key: 'b' + ui.buildType + (ghost ? ghost.join() : '') + ok,
       html: `<h3>${def.name}</h3><p>${def.desc}</p><div class="costs">${costHtml(def.cost, stock)}</div>`
-        + (ghost ? `<p>${ok ? 'Drag the outline to adjust, then place it. Builders haul whatever is missing.' : 'Blocked here. Pick open, dry ground.'}</p>` : '<p>Tap the map where it should go.</p>')
+        + (ghost ? `<p>${ok ? 'Drag the outline to adjust, then place it. Builders haul whatever is missing.' : across ? 'You can only build on your own side of the river.' : 'Blocked here. Pick open, dry ground.'}</p>` : '<p>Tap the map where it should go.</p>')
+        + (lane && ok ? `<p class="lanenote">Its troops will march down the <b>${lane.name}</b> (lit on the map). Place it nearer another lane to change that.</p>` : '')
         + `<div class="acts"><button class="btn" data-a="cancel">Cancel</button>${ghost ? `<button class="btn pri" data-a="place" ${ok ? '' : 'disabled'}>Place</button>` : ''}</div>`,
     };
   }
@@ -66,7 +72,7 @@ function describe() {
       key: 'sel' + b.id + (b.tier ? b.tier.produces + b.built + affordable : ''),
       html: `<h3><i class="tm" style="background:${colors.css}"></i>${own ? '' : 'Red '}${def.name}</h3>
         <div class="hpbar"><u style="width:${Math.max(0, b.hp / b.maxHp * 100)}%;background:${colors.css}"></u></div>
-        <p class="st">${buildingStatus(b)}</p><p>${def.desc}</p>${upgradesHtml(b)}
+        <p class="st">${buildingStatus(b)}</p><div class="slots">${slotsHtml(b)}</div>${b.lane && own ? `<p class="lanenote">Troops march down the <b>${laneById(b.lane).name}</b> (lit on the map).</p>` : ''}<p>${def.desc}</p>${upgradesHtml(b)}
         <div class="acts">${own && b.built && def.courtyard ? '<button class="btn pri" data-a="march">March now</button>' : ''}<button class="btn" data-a="close">Close</button></div>`,
     };
   }
@@ -88,6 +94,8 @@ export function refreshPanel(force = false) {
   } else if (ui.mode === 'look' && ui.selected) {
     const st = el.querySelector('.st');
     if (st) st.textContent = buildingStatus(ui.selected);
+    const slots = el.querySelector('.slots');
+    if (slots) { const html = slotsHtml(ui.selected); if (html !== slots.dataset.html) { slots.innerHTML = html; slots.dataset.html = html; } }
     const bar = el.querySelector('.hpbar u');
     if (bar) bar.style.width = Math.max(0, ui.selected.hp / ui.selected.maxHp * 100) + '%';
   }

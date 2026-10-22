@@ -1,6 +1,6 @@
 // Troops and their officers.
 //
-// A troop walks to the enemy keep and attacks whatever blocks it. If an officer is waiting in a hall's courtyard (state 'cwait') with
+// A troop walks its lane (see lanes.js) to the enemy keep and attacks whatever blocks it. If an officer is waiting in a hall's courtyard (state 'cwait') with
 // room in his band, the new troop joins him and follows him instead. An officer marches ('cmarch') when his band is full, or after
 // waiting a while with at least one follower, or when the player says "March now". Troops in a marching band hit enemy buildings
 // they pass; troops following a waiting officer only defend.
@@ -11,7 +11,8 @@ import { COMMANDER_PATIENCE } from '../../data/balance.js';
 import { UNITS } from '../../data/units.js';
 import { isGone, opponent } from '../query.js';
 import { teams } from '../../core/world.js';
-import { chase, goToBuilding, setGoal, walk } from '../movement.js';
+import { chase, setGoal, walk } from '../movement.js';
+import { marchOnKeep } from '../lanes.js';
 import { attackBuilding, fightTarget, nearestEnemyBuilding, scanForTarget } from './fighting.js';
 
 const SIGHT = { alone: 3.5, escort: 4.5 };      // how far a troop notices enemies on its own, or with a leader / at his post
@@ -92,7 +93,5 @@ export function thinkTroop(u, dt) {
   }
   const enemyKeep = teams[opponent(u.team)].keep;
   if (isGone(enemyKeep)) return;
-  if (!u.goal && !u.path) goToBuilding(u, enemyKeep, true);
-  const r = walk(u, dt);
-  if (r === 1) u.targetBuilding = enemyKeep;
+  if (marchOnKeep(u, dt) === 1) u.targetBuilding = enemyKeep;
 }

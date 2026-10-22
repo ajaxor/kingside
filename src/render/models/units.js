@@ -1,6 +1,6 @@
 // Models of the units, as plain as they can be so they read at a glance. Every person is a cylinder with a rounded top, a round head, and
-// whatever sets the job apart: a hat or helmet and one tool or weapon. Troops wear their team's colour as the whole tunic; workers wear
-// the colour in their data (`look.color`, or `look.tunic` if set) with a team-coloured sash. Horsemen and siege machines are a handful
+// whatever sets the job apart: a hat or helmet and one tool or weapon. The body is one solid colour: the team's for troops and patrols, the
+// colour in the unit's data (`look.color`, or `look.tunic` if set) for workers, who are told apart by it and by their hat and tool. Horsemen and siege machines are a handful
 // of boxes. A person stands about .45 tiles tall and .2 wide, so a tile has room for a building and people walking round it.
 
 import { mulberry } from '../../core/random.js';
@@ -24,7 +24,6 @@ export function bowShape(m, x, y0, h, bulge, col) {
 // The shapes people are made of. y is up; the body is a cylinder .2 tall under a dome, the head a ball on top of it.
 const HEAD_Y = .375;
 const body = (m, tun, y0 = 0, r = .1) => { m.cyl(0, y0, 0, r, y0 + .2, r, 8, tun); m.dome(0, y0 + .2, 0, r, r, r, tun, 8, 2); };
-const sash = (m, T, y0 = 0) => m.cyl(0, y0 + .08, 0, .106, y0 + .14, .106, 8, T);
 const head = (m, y = HEAD_Y) => m.blob(0, y, 0, .072, .072, .072, C.skin, 0, null, 8, 4);
 const cap = (m, col, y = HEAD_Y) => m.dome(0, y + .01, 0, .082, .07, .082, col, 8, 2);                   // a skull cap or helmet
 const brim = (m, col, y = HEAD_Y) => m.cyl(0, y + .01, 0, .105, y + .03, .105, 8, col);                // a ring round the cap
@@ -116,9 +115,8 @@ export function buildUnitModel(kind, team) {
   const { roof: T, dark: TD } = TEAM_COLORS[team];
   if (def.role === 'siege') { siegeModel(m, kind, T); return m; }
   if (look.mounted) { mountedModel(m, kind, T, TD); return m; }
-  const tun = def.role === 'troop' ? T : (look.tunic || look.color);
-  body(m, tun);                                                       // a cylinder with a rounded top
-  if (def.role !== 'troop') sash(m, T);                               // workers wear a sash in the team colour
+  const tun = def.role === 'worker' ? (look.tunic || look.color) : T;    // soldiers and patrols wear their team's colour, workers one for their trade
+  body(m, tun);                                                       // a cylinder with a rounded top, one solid colour
   head(m);                                                            // a round head
   FOOT_MODELS[kind](m, tun, T);
   return m;

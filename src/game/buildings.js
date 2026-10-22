@@ -4,7 +4,7 @@ import { MAP_SIZE as N, PLAYER } from '../core/config.js';
 import { emit } from '../core/events.js';
 import { random } from '../core/random.js';
 import { removeItem } from '../core/util.js';
-import { buildings, buildingsById, effects, field, fieldAge, fieldTeam, game, ground, nodeKind, occupant, teams, yardOwner } from '../core/world.js';
+import { buildings, buildingsById, effects, field, fieldAge, fieldTeam, game, ground, nodeKind, occupant, teams, territory, yardOwner } from '../core/world.js';
 import { BUILDINGS, isLinkable, usesArrows } from '../data/buildings.js';
 import { START_ARROWS } from '../data/balance.js';
 import { GOODS } from '../data/goods.js';
@@ -14,17 +14,19 @@ import { buildingAt, centerX, centerZ, inBounds, isPlanOnly, opponent } from './
 import { notify } from './notify.js';
 import { endGame } from './outcome.js';
 import { killUnit } from './units.js';
+import { laneFor } from './lanes.js';
 
 const zeroGoods = () => Object.fromEntries(Object.keys(GOODS).map((g) => [g, 0]));
 
-/** Can a building of `type` stand with its top-left corner at tile (i, j)? `spacing` also demands an empty ring around it (the AI uses this). */
-export function canPlace(type, i, j, spacing) {
+/** Can a building of `type` stand with its top-left corner at tile (i, j)? `spacing` also demands an empty ring around it (the AI uses this).
+ *  Nobody may build across the centre line (the river): `team` may only build on its own half. */
+export function canPlace(type, i, j, spacing, team = PLAYER) {
   const def = BUILDINGS[type];
   for (let y = j; y < j + def.size; y++) {
     for (let x = i; x < i + def.size; x++) {
       if (!inBounds(x, y)) return false;
       const k = y * N + x;
-      if (nodeKind[k] || field[k] || yardOwner[k]) return false;
+      if (nodeKind[k] || field[k] || yardOwner[k] || territory[k] !== team) return false;
       if (occupant[k]) {
         const there = buildingAt(k);
         const replaceable = def.replaces && there && there.team === PLAYER && there.type === def.replaces && there.built;
@@ -47,10 +49,10 @@ export function canPlace(type, i, j, spacing) {
 }
 
 /** Can a plot of field be tilled at tile (i, j)? */
-export function canTill(i, j) {
+export function canTill(i, j, team = PLAYER) {
   if (!inBounds(i, j)) return false;
   const k = j * N + i;
-  return ground[k] === TERRAIN.LAND && !nodeKind[k] && !occupant[k] && !field[k] && !yardOwner[k];
+  return territory[k] === team && ground[k] === TERRAIN.LAND && !nodeKind[k] && !occupant[k] && !field[k] && !yardOwner[k];
 }
 
 export function tillField(i, j, team) {
@@ -80,7 +82,9 @@ export function placeBuilding(team, type, i, j, built) {
     tier: def.training || null,   // where it is in its upgrade tree
     tierDepth: 0,
     charges: def.trap ? def.trap.charges : 0,
+    lane: null,                   // the lane its troops march down (set below for buildings that train them)
   };
+  if (def.training) b.lane = laneFor(team, i + b.size / 2, j + b.size / 2).id;
   for (let y = j; y < j + b.size; y++) for (let x = i; x < i + b.size; x++) occupant[y * N + x] = b.id;
   buildings.push(b);
   buildingsById.set(b.id, b);
