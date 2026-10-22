@@ -11,3 +11,10 @@ Architecture and design that could be better. Newest at the bottom.
 - **Terrain is one big mesh rebuilt whenever a node is harvested** (throttled to 4 per second). Chunking it would make rebuilds cheap.
 - **Rendering was only verified headlessly** (stubbed GL). There are no screenshot or golden-image tests.
 - **Scattered unit-family strings.** `family` ('infantry' | 'ranged') and officer `take` filters are plain strings checked in several places.
+- **The flat look is tuned by eye and coupled to the camera heading.** The three light bands in `src/render/gl/context.js` (thresholds, sun direction) were chosen so the two walls the fixed camera sees land in different bands. Turning the camera, or changing `FORWARD` in `camera.js`, would silently flatten that. Light and shade colours are literals in the shader, and the palette in `palette.js` assumes them (top faces come out about 7% warmer and lighter).
+- **Team colours live in three places.** `TEAM_COLORS` in `palette.js`, `--blue`/`--red` in `style.css`, and the keep silhouettes in `title-backdrop.js` are kept in sync by hand.
+- **Zoom-dependent sizing is ad hoc.** `zoomBoost` in `scene.js` grows units as the camera pulls back, but health bars, selection rings and markers stay a fixed world size, so they shrink relative to the units when zoomed out. One shared "readable at this zoom" scale would be cleaner.
+- **`tileRandom` is no longer used by drawing.** It is only the path-cost tiebreak in `mapgen.js` now; its comment in `world.js` still says "for drawing variation".
+- **Models are still hand-placed coordinates.** The simplified buildings and people are shorter, but the data-driven part list suggested above would still help. Worker and troop tools are one-off lines per kind in `FOOT_MODELS`.
+- **Look changes are only checked by eye.** A headless Chromium with software WebGL does render the game (that is how this style was checked), so a screenshot or golden-image test is now possible; `tests/scene.test.js` still uses a stub GL.
+

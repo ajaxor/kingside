@@ -1,19 +1,24 @@
-// The WebGL layer: one canvas, one shader for lit low-poly meshes, and a two-pass tilt-shift blur that makes the world look like a
-// miniature. It owns the only GL state; everything else asks it to make, draw and free meshes.
+// The WebGL layer: one canvas, one shader for flat-shaded low-poly meshes (three hard light bands, see MESH_VS), and an optional two-pass
+// tilt-shift blur that makes the world look like a miniature. It owns the only GL state; everything else asks it to make, draw and
+// free meshes.
 //
 // A mesh is { bp, bn, bc, count, pts }: GPU buffers for positions, normals and colours, the vertex count, and the raw positions
 // (kept so a mesh can be redrawn elsewhere, e.g. rendered to an icon in icons.js).
 
 import { clamp, norm3 } from '../../core/math.js';
 
+// The look: flat colour, no gradients. Every face lands in one of three hard light bands (shade, side, top) chosen by how it faces the
+// sun. Shade leans cool and violet, light leans warm, so a plain box reads as three clean tones. The sun is placed so the two walls the
+// camera sees fall in different bands (left wall mid, right wall shade, roofs and ground light).
 const MESH_VS = `attribute vec3 aP;attribute vec3 aN;attribute vec3 aC;
 uniform mat4 uVP;uniform mat4 uM;uniform vec3 uSun;uniform vec4 uTint;uniform vec2 uFogR;
 varying vec3 vC;varying float vF;
 void main(){vec4 w=uM*vec4(aP,1.);gl_Position=uVP*w;vec3 n=normalize((uM*vec4(aN,0.)).xyz);
-float d=max(dot(n,uSun),0.);float h=n.y*.5+.5;
-vec3 amb=mix(vec3(.36,.35,.40),vec3(.62,.67,.74),h);
+float d=dot(n,uSun);
+vec3 l=mix(vec3(.60,.63,.82),vec3(.88,.90,.96),step(.34,d));
+l=mix(l,vec3(1.07,1.03,.92),step(.64,d));
 vec3 c=mix(aC,uTint.rgb,uTint.a);
-vC=c*(amb+vec3(1.,.93,.80)*d*.62);
+vC=c*l;
 vF=smoothstep(uFogR.x,uFogR.y,gl_Position.w);}`;
 const MESH_FS = `precision mediump float;uniform vec3 uFog;uniform float uA;varying vec3 vC;varying float vF;
 void main(){gl_FragColor=vec4(mix(vC,uFog,vF),uA);}`;
@@ -24,8 +29,8 @@ void main(){float d=abs(vUv.y-uFocus);float r=uMax*smoothstep(uBand,uBand+.34,d)
  for(int i=-4;i<=4;i++){float fi=float(i);float w=exp(-fi*fi*.125);vec4 s=texture2D(uTex,vUv+uDir*uTexel*fi*r*.25);acc+=vec4(s.rgb*s.a,s.a)*w;ws+=w;}
  float a=acc.a/ws;vec3 c=acc.rgb/max(acc.a,.0001);float l=dot(c,vec3(.3,.59,.11));c=mix(vec3(l),c,uSat);c=(c-.5)*uCon+.5;gl_FragColor=vec4(c,a);}`;
 
-const SUN = norm3([-.55, .78, .38]);
-const FOG_COLOR = [.82, .88, .88];
+const SUN = norm3([-.45, .85, .28]);
+const FOG_COLOR = [.86, .91, .88];
 
 let canvas = null, gl = null, mesh = null, post = null;
 let lastMesh = null;

@@ -7,7 +7,7 @@ import { GAME_SPEEDS } from '../data/balance.js';
 import { focusOn } from '../render/camera.js';
 import { $ } from './dom.js';
 
-export const hudOptions = { blur: true };
+export const hudOptions = { blur: false };     // tilt-shift is optional: the flat look reads best sharp
 
 /** Build the stockpile pills and wire the buttons. */
 export function initHud() {

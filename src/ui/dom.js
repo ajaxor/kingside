@@ -9,7 +9,7 @@ const MARKUP = `
     <button class="kb" id="kbP"><i></i>Your keep<em><u></u></em></button>
     <button class="kb" id="kbE"><i></i>Red keep<em><u></u></em></button>
     <button class="tbtn" id="bMenu" aria-label="Main menu">Menu</button>
-    <button class="tbtn" id="bFx" aria-label="Toggle tilt-shift" aria-pressed="true">Tilt</button>
+    <button class="tbtn" id="bFx" aria-label="Toggle tilt-shift" aria-pressed="false">Tilt</button>
   </div>
 </div>
 <div id="toasts"></div>

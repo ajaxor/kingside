@@ -18,8 +18,9 @@ import { beginScene, drawMesh, endScene, freeMesh, makeMesh, setBlending, setDep
 import { meshes } from './models/index.js';
 import { buildTerrain } from './terrain.js';
 
+const UNIT_SCALE = 1.65;                      // people are drawn big so they still read from afar, and bigger still as the camera pulls back
 const BAR_ROTATION = -Math.PI / 4, BAR_AXIS = [Math.SQRT1_2, 0, Math.SQRT1_2];
-const PLAN_TINT = [.86, .78, .6], HIT_TINT = [1, 1, 1];
+const PLAN_TINT = [.86, .78, .6], HIT_TINT = [1, 1, 1], SHADOW = [.18, .2, .35];   // shadows are the cool violet of the shade band, not black
 const GHOST_OK = [.45, .9, .5], GHOST_BAD = [.95, .35, .3];
 
 let terrainMesh = null, terrainBuiltAt = 0;
@@ -37,8 +38,8 @@ export function render(view) {
   }
   beginScene(view.blur, [0, 0, 0]);
   const eye = cameraEye(), { width, height } = viewportSize(), aspect = width / height;
-  setViewProjection(multiply(perspective(FOV, aspect, .5, 200), lookAt(eye, [camera.tx, 0, camera.tz])));
-  setFog(camera.D * 1.5, camera.D * 3.6);
+  setViewProjection(multiply(perspective(FOV, aspect, .5, 400), lookAt(eye, [camera.tx, 0, camera.tz])));
+  setFog(camera.D * 2.4, camera.D * 5.5);     // barely any haze: a far unit must read as clearly as a near one
   drawMesh(terrainMesh, 0, 0, 0);
 
   for (const b of buildings) drawBuilding(b);
@@ -49,7 +50,7 @@ export function render(view) {
   drawBars();
 
   setBlending(true); setDepthWrite(false);
-  for (const u of units) drawMesh(meshes.prop.disc, u.x, .02, u.z, 0, .24, 1, .24, [0, 0, 0], 1, .2);
+  for (const u of units) drawMesh(meshes.prop.disc, u.x + .05, .02, u.z - .03, 0, .26, 1, .26, SHADOW, 1, .22);
   for (const b of buildings) {
     if (isPlanOnly(b)) {
       const s = isLinkable(b.type) ? .9 : b.size * .96;
@@ -58,7 +59,7 @@ export function render(view) {
   }
   for (const b of buildings) {
     if (isLinkable(b.type) || b.type === 'trap') continue;
-    drawMesh(meshes.prop.disc, centerX(b), .018, centerZ(b), 0, b.size * .62, 1, b.size * .62, [0, 0, 0], 1, .13);
+    drawMesh(meshes.prop.disc, centerX(b) + .06, .018, centerZ(b) - .04, 0, b.size * .62, 1, b.size * .62, SHADOW, 1, .16);
   }
   for (const f of effects) {
     const p = f.t / f.d, s = f.size * (.5 + p);
@@ -130,7 +131,7 @@ function drawFields() {
     const f = field[k];
     if (!f) continue;
     const x = k % N + .5, z = ((k / N) | 0) + .5;
-    drawMesh(cube, x, .02, z, 0, .92, .04, .92, [.46, .34, .24], 1);
+    drawMesh(cube, x, .02, z, 0, .94, .04, .94, C.soil, 1);
     if (f === FIELD.GROWING) drawMesh(crop, x, .03, z, 0, .55, 1.4 * (.2 + .8 * (fieldAge[k] / CROP_GROW_SECONDS)), .55, [.5, .76, .3], .5);
     else if (f === FIELD.RIPE) drawMesh(crop, x, .03, z, 0, .55, 1.4, .55);
   }
@@ -142,9 +143,12 @@ function carryColor(item) {
   return C[key];
 }
 
+/** Units grow a little as the camera zooms out, so a crowd stays readable at any distance. */
+const zoomBoost = () => Math.min(1.45, Math.max(1, Math.sqrt(camera.D / 24)));
+
 function drawUnit(u) {
   const look = UNITS[u.kind].look, bob = u.moving ? Math.abs(Math.sin(u.anim * 11)) * .05 : 0;
-  const swing = u.working ? Math.sin(u.anim * 12) * .18 : 0, hit = u.hitTimer > 0 ? HIT_TINT : null, s = look.scale || 1.35;
+  const swing = u.working ? Math.sin(u.anim * 12) * .18 : 0, hit = u.hitTimer > 0 ? HIT_TINT : null, s = (look.scale || UNIT_SCALE) * zoomBoost();
   drawMesh(meshes.unit[u.team][u.kind], u.x, bob, u.z, u.face + swing, s, s, s, hit, hit ? .55 : 0);
   if (u.carry) {
     const sx = -Math.sin(u.face) * .17, sz = -Math.cos(u.face) * .17;

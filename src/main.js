@@ -82,7 +82,7 @@ export async function boot({ onQuit } = {}) {
     game.running = true;
     focusOn(teams[PLAYER].keep);
     camera.tx += 2.5; camera.tz -= 2.5;
-    camera.D = innerWidth < innerHeight ? 23 : 17;
+    camera.D = innerWidth < innerHeight ? 36 : 30;      // start zoomed out: most of the player's side fits on screen
     clampCamera();
     accumulator = 0;
     hideCard();

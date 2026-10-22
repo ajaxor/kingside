@@ -13,3 +13,10 @@ Ideas and follow-ups, roughly in priority order.
 - Unit selection and direct orders (rally points for barracks, targeting for siege).
 - Fog of war.
 - Screenshot test of the scene in a headless browser once one is available.
+- Zoom-to-fit and "reset view" buttons; auto-hide the build tray and context panel while panning so the map gets the whole screen.
+- Optional "ink" outline pass (back-face hull or depth-edge) on units and buildings for even better readability against busy ground.
+- Colour-blind friendly team marks: a shape or pattern on units and roofs as well as blue versus red.
+- Strategic zoom: below a certain camera height, swap units for bold team-coloured pips so a big army still reads at a glance.
+- Rotate the camera in 90 degree steps (needs the light bands re-tuned per heading, see tech-debt.md).
+- A "Look" setting on the title screen: flat (default), tilt-shift miniature, and a high-contrast mode.
+

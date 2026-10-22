@@ -3,28 +3,26 @@
 // built and tested anywhere. Rebuilt when a node is harvested (game.terrainDirty).
 
 import { MAP_SIZE as N } from '../core/config.js';
-import { clamp, mixColor, shade } from '../core/math.js';
+import { mixColor, shade } from '../core/math.js';
 import { mulberry } from '../core/random.js';
 import { TERRAIN, TERRAIN_INFO, NODE, NODE_INFO } from '../data/terrain.js';
-import { ground, nodeKind, nodeLeft, road, nearWater, tileRandom, grassNoise, game } from '../core/world.js';
+import { ground, nodeKind, nodeLeft, road, nearWater, grassNoise, game } from '../core/world.js';
 import { inBounds } from '../game/query.js';
 import { MeshBuilder } from './mesh-builder.js';
 import { C } from './palette.js';
 
 const FULL_TILE = { [NODE.TREE]: NODE_INFO[NODE.TREE].amount, [NODE.STONE]: NODE_INFO[NODE.STONE].amount, [NODE.ORE]: NODE_INFO[NODE.ORE].amount };
 
-/** A tree standing at (x, z) on height `yb`, either a pine or a round-leafed one. */
+/** A tree standing at (x, z) on height `yb`: a stack of two cones (a pine) or one faceted ball on a stub (a leafy tree). Few facets, no jitter. */
 export function addTree(m, x, z, r, yb = 0, scale = 1) {
-  const big = (.85 + r() * .35) * scale;
+  const big = (.9 + r() * .3) * scale;
   if (r() < .55) {
-    m.cyl(x, yb, z, .07, yb + .25, .06, 5, C.trunk);
-    m.cyl(x, yb + .18 * scale, z, .38 * big, yb + .85 * big, 0, 6, C.pine, r() * 6);
-    m.cyl(x, yb + .5 * big, z, .29 * big, yb + 1.22 * big, 0, 6, C.pine2, r() * 6);
+    m.cyl(x, yb, z, .07, yb + .22, .07, 4, C.trunk);
+    m.cyl(x, yb + .16 * scale, z, .4 * big, yb + .78 * big, 0, 5, C.pine, 0);
+    m.cyl(x, yb + .5 * big, z, .3 * big, yb + 1.2 * big, 0, 5, C.pine2, 0);
   } else {
-    m.cyl(x, yb, z, .07, yb + .42 * big, .055, 5, C.trunk);
-    const leaf = r() < .5 ? C.leaf : C.leaf2;
-    m.blob(x, yb + .68 * big, z, .34 * big, .32 * big, .34 * big, leaf, .28, r, 6, 3);
-    if (r() < .5) m.blob(x + .14, yb + .52 * big, z + .1, .2 * big, .18 * big, .2 * big, leaf, .3, r, 5, 3);
+    m.cyl(x, yb, z, .07, yb + .36 * big, .07, 4, C.trunk);
+    m.blob(x, yb + .66 * big, z, .36 * big, .34 * big, .36 * big, r() < .5 ? C.leaf : C.leaf2, 0, null, 5, 2);
   }
 }
 
@@ -65,14 +63,13 @@ function massTile(m, i, j, H, kind) {
   const W = N + 1, h00 = H[j * W + i], h10 = H[j * W + i + 1], h01 = H[(j + 1) * W + i], h11 = H[(j + 1) * W + i + 1], forest = kind === NODE.TREE;
   let top;
   if (forest) {
-    top = mixColor(C.leaf, C.leaf2, hash(i, j, 2));
-    top = mixColor(top, C.pine, hash(i, j, 9) * .55);
+    top = hash(i, j, 2) < .5 ? C.leaf : C.leaf2;           // flat patches, not blends
   } else if (kind === NODE.ORE) top = mixColor(C.rock, C.iron, .5);
-  else top = mixColor(C.rock, [.82, .8, .76], hash(i, j, 3) * .8);
+  else top = hash(i, j, 3) < .5 ? C.rock : C.stone;
   const side = forest ? C.pine : C.rockD;
   const A = [i, h00, j], B = [i + 1, h10, j], Cc = [i + 1, h11, j + 1], D = [i, h01, j + 1], ctr = [i + .5, -2, j + .5];
-  if (hash(i, j, 5) < .5) { m.tri(A, B, Cc, top, ctr); m.tri(A, Cc, D, shade(top, .93), ctr); }
-  else { m.tri(A, B, D, top, ctr); m.tri(B, Cc, D, shade(top, .93), ctr); }
+  if (hash(i, j, 5) < .5) { m.tri(A, B, Cc, top, ctr); m.tri(A, Cc, D, top, ctr); }
+  else { m.tri(A, B, D, top, ctr); m.tri(B, Cc, D, top, ctr); }
   const joins = (di, dj) => isMass(i + di, j + dj, forest), sc = [i + .5, .5, j + .5];
   if (!joins(0, -1)) m.quad([i, 0, j], [i + 1, 0, j], B, A, side, sc);
   if (!joins(0, 1)) m.quad([i, 0, j + 1], [i + 1, 0, j + 1], Cc, D, side, sc);
@@ -80,15 +77,13 @@ function massTile(m, i, j, H, kind) {
   if (!joins(1, 0)) m.quad([i + 1, 0, j], [i + 1, 0, j + 1], Cc, B, side, sc);
 }
 
-/** The ground tile's top colour. */
+/** The ground tile's top colour. Flat: each tile is one of a few plain colours (two greens, shore sand, path), never a blend or a jitter. */
 function groundColor(k, kind) {
-  const jitter = 1 + (tileRandom[k] - .5) * .05;
-  if (kind === TERRAIN.WATER) return shade(C.water, jitter);
-  if (kind === TERRAIN.FORD) return shade(C.ford, jitter);
-  let col = mixColor(C.grass, C.grass2, clamp(grassNoise[k] * 1.6 - .3, 0, 1));
-  if (nearWater[k]) col = mixColor(col, C.sand, .35);
-  if (road[k]) col = mixColor(col, C.path, .55);
-  return shade(col, jitter);
+  if (kind === TERRAIN.WATER) return C.water;
+  if (kind === TERRAIN.FORD) return C.ford;
+  if (road[k]) return C.path;
+  if (nearWater[k]) return C.sand;
+  return grassNoise[k] > .52 ? C.grass2 : C.grass;
 }
 
 const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -119,7 +114,7 @@ export function buildTerrain() {
     const r = mulberry(k * 977 + game.seed), x = i + .5 + (r() - .5) * .25, z = j + .5 + (r() - .5) * .25;
     const forest = node === NODE.TREE, joined = neighbourCount(i, j, forest);
     if (forest) {
-      if (!joined) { m.disc(x, .012, z, .42, 8, shade(col, .78)); addTree(m, x, z, r, 0, 1); }
+      if (!joined) { m.disc(x, .012, z, .42, 8, shade(col, .8)); addTree(m, x, z, r, 0, 1); }
       else {
         massTile(m, i, j, forestH, NODE.TREE);
         const hy = massHeightAt(forestH, i, j, .5, .5) - .05;
@@ -131,12 +126,12 @@ export function buildTerrain() {
       const ore = node === NODE.ORE;
       if (!joined) {
         m.disc(i + .5, .012, j + .5, .5, 8, mixColor(col, C.rockD, .45));
-        m.blob(x, .12, z, .4 * scale, .34 * scale, .36 * scale, base, .35, r, 6, 3, ore ? (a, b) => ((a + b) % 3 === 0 ? C.iron : base) : null);
-        m.blob(x + .25, .06, z + .2, .18, .14, .16, ore ? C.iron : C.rockD, .35, r, 5, 3);
+        m.blob(x, .12, z, .4 * scale, .34 * scale, .36 * scale, base, .2, r, 5, 2, ore ? (a, b) => ((a + b) % 3 === 0 ? C.iron : base) : null);
+        m.blob(x + .25, .06, z + .2, .18, .14, .16, ore ? C.iron : C.rockD, .2, r, 5, 2);
       } else {
         massTile(m, i, j, cliffH, node);
         const hy = massHeightAt(cliffH, i, j, .5, .5);
-        m.blob(x, hy + .03, z, .34 * scale, .26 * scale, .32 * scale, ore ? C.iron : C.rock, .35, r, 6, 3);
+        m.blob(x, hy + .03, z, .34 * scale, .26 * scale, .32 * scale, ore ? C.iron : C.rock, .2, r, 5, 2);
       }
     }
   }

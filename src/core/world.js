@@ -18,7 +18,7 @@ export const yardOwner = new Int32Array(TILES);       // id of the officer hall 
 export const occupant = new Int32Array(TILES);        // id of the building standing on the tile (0 = none)
 export const road = new Uint8Array(TILES);            // a trail carved between the keeps and the fords
 export const nearWater = new Uint8Array(TILES);       // land next to water (drawn sandy)
-export const tileRandom = new Float32Array(TILES);    // per-tile random number for drawing variation
+export const tileRandom = new Float32Array(TILES);    // per-tile random number (path-cost tiebreak)
 export const grassNoise = new Float32Array(TILES);    // smooth noise for drawing the grass
 export const unreachable = Array.from({ length: TEAM_COUNT }, () => new Float32Array(TILES));  // per team: game time until which a tile is not tried again
 
