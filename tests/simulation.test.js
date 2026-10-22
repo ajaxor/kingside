@@ -38,7 +38,7 @@ test('two computer players build, train and fight without breaking the world', (
   assert.ok(buildings.filter((b) => b.built).length > 6, 'buildings get completed');
   assert.ok(units.length > 4, 'units appear');
   for (const t of teams) for (const v of Object.values(t.stock)) assert.ok(Number.isFinite(v) && v > -1e-6, 'stock stays a sane number');
-  for (const u of units) assert.ok(u.x >= -1 && u.z >= -1 && u.x <= 49 && u.z <= 49, 'units stay on the map');
+  for (const u of units) assert.ok(u.x >= -1 && u.z >= -1 && u.x <= 73 && u.z <= 73, 'units stay on the map');
 });
 
 test('the same seed plays out the same way', () => {

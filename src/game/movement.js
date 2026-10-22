@@ -6,6 +6,7 @@ import { clamp } from '../core/math.js';
 import { random } from '../core/random.js';
 import { ground, nodeKind, occupant } from '../core/world.js';
 import { TERRAIN, TERRAIN_INFO } from '../data/terrain.js';
+import { isLinkable } from '../data/buildings.js';
 import { UNITS, isFighter, isSiege } from '../data/units.js';
 import { findPath, walkCost } from './pathing.js';
 import { buildingAt, distToBuilding, isPlanOnly, tileAt } from './query.js';
@@ -32,6 +33,30 @@ function stepToward(u, tx, tz, dt) {
   return false;
 }
 
+const RIM = .4;     // how far from the middle of its tile a walker keeps when passing a building (the model fills the middle .55)
+
+/**
+ * Where to aim when stepping onto tile k. Normally the tile's middle. Through a tile with one of your own buildings on it, a point on
+ * the rim instead: to the side when walking straight on, round the inside corner when turning, so people walk round the model, not
+ * through it.
+ */
+function waypointFor(u, k) {
+  const cx = k % N + .5, cz = ((k / N) | 0) + .5, b = buildingAt(k);
+  if (!b || b.team !== u.team || b.type === 'trap' || isLinkable(b.type) || isPlanOnly(b)) return [cx, cz];
+  const norm = (x, z) => { const d = Math.hypot(x, z) || 1; return [x / d, z / d]; };
+  const [ix, iz] = norm(cx - u.x, cz - u.z);
+  const next = u.path[u.pathIndex + 1];
+  const [ox, oz] = next === undefined ? [ix, iz] : norm(next % N + .5 - cx, ((next / N) | 0) + .5 - cz);
+  const sx = ox - ix, sz = oz - iz;
+  if (Math.hypot(sx, sz) < .35) {                                   // straight on: pass on one side, alternating so a street splits
+    const side = (k + u.id) & 1 ? 1 : -1;
+    return [cx - iz * side * RIM, cz + ix * side * RIM];
+  }
+  const snap = (v) => (Math.abs(v) > .35 ? Math.sign(v) : 0);       // a turn: cut the inside corner of the tile
+  const [tx, tz] = [snap(sx), snap(sz)];
+  return [cx + tx * RIM, cz + tz * RIM];
+}
+
 /** Follow the current path. Returns true when it is finished (or there is none); drops the path if something now blocks it. */
 function followPath(u, dt) {
   if (!u.path || u.pathIndex >= u.path.length) return true;
@@ -39,14 +64,15 @@ function followPath(u, dt) {
   const b = buildingAt(k);
   if (b && b.type !== 'trap' && !isPlanOnly(b)) {
     if (b.team !== u.team) {
-      if (isFighter(u.kind) || isSiege(u.kind)) { u.targetBuilding = b; u.goal = null; }   // an enemy wall in the way: attack it
+      if (isFighter(u.kind) || isSiege(u.kind)) { u.targetBuilding = b; u.goal = null; }   // an enemy building in the way: attack it
       u.path = null;
       return false;
     }
-    if (b.type !== 'gate') { u.path = null; return false; }
+    if (isLinkable(b.type) && b.type !== 'gate') { u.path = null; return false; }          // your own wall
   }
   if (ground[k] === TERRAIN.WATER || nodeKind[k]) { u.path = null; return false; }
-  if (stepToward(u, k % N + .5, ((k / N) | 0) + .5, dt)) { u.pathIndex++; return u.pathIndex >= u.path.length; }
+  const [wx, wz] = waypointFor(u, k);
+  if (stepToward(u, wx, wz, dt)) { u.pathIndex++; return u.pathIndex >= u.path.length; }
   return false;
 }
 

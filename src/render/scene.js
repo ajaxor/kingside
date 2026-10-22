@@ -16,31 +16,37 @@ import { camera, cameraEye, FOV } from './camera.js';
 import { lookAt, multiply, perspective } from './gl/matrix.js';
 import { beginScene, drawMesh, endScene, freeMesh, makeMesh, setBlending, setDepthWrite, setFog, setViewProjection, viewportSize } from './gl/context.js';
 import { meshes } from './models/index.js';
-import { buildTerrain } from './terrain.js';
+import { buildTerrain, buildNodes } from './terrain.js';
 
-const UNIT_SCALE = 1.65;                      // people are drawn big so they still read from afar, and bigger still as the camera pulls back
+const UNIT_SCALE = 1;                         // people are about .45 tall; they grow a little as the camera pulls back (zoomBoost)
 const BAR_ROTATION = -Math.PI / 4, BAR_AXIS = [Math.SQRT1_2, 0, Math.SQRT1_2];
 const PLAN_TINT = [.86, .78, .6], HIT_TINT = [1, 1, 1], SHADOW = [.18, .2, .35];   // shadows are the cool violet of the shade band, not black
 const GHOST_OK = [.45, .9, .5], GHOST_BAD = [.95, .35, .3];
 
-let terrainMesh = null, terrainBuiltAt = 0;
-const TERRAIN_REBUILD_SECONDS = .25;      // harvesting marks the terrain dirty often; rebuilding is the costliest thing a frame can do
+let terrainMesh = null, nodesMesh = null, nodesBuiltAt = 0;
+const NODES_REBUILD_SECONDS = .15;        // harvesting marks the resource tiles dirty often; they are cheap to rebuild but not free
 
 /** What the scene needs to know about the UI: `selected` and `razeTarget` buildings, `ghost` ({ type, i, j }) while placing, `blur` for tilt-shift. */
 export function render(view) {
   const cube = meshes.prop.cube;
   const now = performance.now() / 1000;
-  if (game.terrainDirty && (!terrainMesh || now - terrainBuiltAt >= TERRAIN_REBUILD_SECONDS)) {
+  if (game.terrainDirty) {
     freeMesh(terrainMesh);
     terrainMesh = makeMesh(buildTerrain());
-    terrainBuiltAt = now;
     game.terrainDirty = false;
+  }
+  if (game.nodesDirty && (!nodesMesh || now - nodesBuiltAt >= NODES_REBUILD_SECONDS)) {
+    freeMesh(nodesMesh);
+    nodesMesh = makeMesh(buildNodes());
+    nodesBuiltAt = now;
+    game.nodesDirty = false;
   }
   beginScene(view.blur, [0, 0, 0]);
   const eye = cameraEye(), { width, height } = viewportSize(), aspect = width / height;
   setViewProjection(multiply(perspective(FOV, aspect, .5, 400), lookAt(eye, [camera.tx, 0, camera.tz])));
   setFog(camera.D * 2.4, camera.D * 5.5);     // barely any haze: a far unit must read as clearly as a near one
   drawMesh(terrainMesh, 0, 0, 0);
+  drawMesh(nodesMesh, 0, 0, 0);
 
   for (const b of buildings) drawBuilding(b);
   drawFields();
@@ -50,16 +56,16 @@ export function render(view) {
   drawBars();
 
   setBlending(true); setDepthWrite(false);
-  for (const u of units) drawMesh(meshes.prop.disc, u.x + .05, .02, u.z - .03, 0, .26, 1, .26, SHADOW, 1, .22);
+  for (const u of units) drawMesh(meshes.prop.disc, u.x + .03, .02, u.z - .02, 0, .15, 1, .15, SHADOW, 1, .22);
   for (const b of buildings) {
     if (isPlanOnly(b)) {
-      const s = isLinkable(b.type) ? .9 : b.size * .96;
+      const s = isLinkable(b.type) ? .7 : b.size * .96;
       drawMesh(cube, centerX(b), .03, centerZ(b), 0, s, .05, s, TEAM_COLORS[b.team].roof, 1, .38);
     }
   }
   for (const b of buildings) {
     if (isLinkable(b.type) || b.type === 'trap') continue;
-    drawMesh(meshes.prop.disc, centerX(b) + .06, .018, centerZ(b) - .04, 0, b.size * .62, 1, b.size * .62, SHADOW, 1, .16);
+    drawMesh(meshes.prop.disc, centerX(b) + .06, .018, centerZ(b) - .04, 0, b.size * .4, 1, b.size * .4, SHADOW, 1, .16);
   }
   for (const f of effects) {
     const p = f.t / f.d, s = f.size * (.5 + p);
@@ -80,7 +86,7 @@ function drawBar(x, y, z, width, fraction, color) {
 }
 
 function drawRing(b, color, alpha) {
-  const cube = meshes.prop.cube, x = centerX(b), z = centerZ(b), s = b.size / 2 + .12, t = .07;
+  const cube = meshes.prop.cube, x = centerX(b), z = centerZ(b), s = b.size / 2 + .02, t = .05;
   drawMesh(cube, x, .05, z - s, 0, s * 2 + t, .06, t, color, 1, alpha); drawMesh(cube, x, .05, z + s, 0, s * 2 + t, .06, t, color, 1, alpha);
   drawMesh(cube, x - s, .05, z, 0, t, .06, s * 2 + t, color, 1, alpha); drawMesh(cube, x + s, .05, z, 0, t, .06, s * 2 + t, color, 1, alpha);
 }
@@ -114,7 +120,7 @@ function drawBuilding(b) {
     const { x: yx, z: yz } = b.yard, colors = TEAM_COLORS[b.team], cube = meshes.prop.cube;
     drawMesh(cube, yx, .018, yz, 0, 2.9, .036, 2.9, [.80, .76, .68], 1);
     drawMesh(cube, yx, .026, yz, 0, 1.1, .03, 1.1, colors.roof, .55);
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) drawMesh(cube, yx + sx * 1.42, .17, yz + sz * 1.42, 0, .1, .34, .1, colors.dark, 1);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) drawMesh(cube, yx + sx * 1.42, .12, yz + sz * 1.42, 0, .08, .24, .08, colors.dark, 1);
   }
   if (isLinkable(b.type)) { drawLinkable(b, hit); return; }
   if (b.built) { drawMesh(models[b.type], x, 0, z, 0, 1, 1, 1, hit, hit ? .45 : 0); return; }
@@ -122,7 +128,7 @@ function drawBuilding(b) {
   if (isPlanOnly(b)) return;
   drawMesh(models[b.type], x, 0, z, 0, 1, Math.max(.06, b.progress), 1, hit || PLAN_TINT, hit ? .45 : .35);
   const half = b.size * .5;
-  drawMesh(meshes.prop.scaffold, x, 0, z, 0, half, Math.max(.4, b.size === 1 ? 1.4 : 1.1), half);
+  drawMesh(meshes.prop.scaffold, x, 0, z, 0, half, b.size === 1 ? .8 : 1.5, half);
 }
 
 function drawFields() {
@@ -151,21 +157,21 @@ function drawUnit(u) {
   const swing = u.working ? Math.sin(u.anim * 12) * .18 : 0, hit = u.hitTimer > 0 ? HIT_TINT : null, s = (look.scale || UNIT_SCALE) * zoomBoost();
   drawMesh(meshes.unit[u.team][u.kind], u.x, bob, u.z, u.face + swing, s, s, s, hit, hit ? .55 : 0);
   if (u.carry) {
-    const sx = -Math.sin(u.face) * .17, sz = -Math.cos(u.face) * .17;
-    drawMesh(meshes.prop.cube, u.x + sx, .42 + bob, u.z + sz, u.face, .2, .16, .16, carryColor(u.carry.item), 1);
+    const sx = -Math.sin(u.face) * .1, sz = -Math.cos(u.face) * .1;
+    drawMesh(meshes.prop.cube, u.x + sx, .24 + bob, u.z + sz, u.face, .12, .1, .1, carryColor(u.carry.item), 1);
   }
 }
 
 function drawMarkers(now) {
   for (let k = 0; k < N * N; k++) {
     if (!marked[k] || !nodeKind[k]) continue;
-    const x = k % N + .5, z = ((k / N) | 0) + .5, h = nodeKind[k] === NODE.TREE ? 1.9 : 1.6;
-    drawMesh(meshes.prop.gem, x, h + Math.sin(now * 3 + k) * .06, z, now * 1.5 + k, .1, .16, .1, [.98, .82, .32], 1);
+    const x = k % N + .5, z = ((k / N) | 0) + .5, h = .75;
+    drawMesh(meshes.prop.gem, x, h + Math.sin(now * 3 + k) * .04, z, now * 1.5 + k, .07, .11, .07, [.98, .82, .32], 1);
   }
   for (const b of buildings) {            // a red gem over your towers that have run out of arrows
     const defence = BUILDINGS[b.type].defence;
     if (defence && usesArrows(b.type) && b.team === 0 && b.built && b.arrows < defence.arrowsPerShot) {
-      drawMesh(meshes.prop.gem, centerX(b), defence.height + 1.1 + Math.sin(now * 4) * .08, centerZ(b), now * 2, .13, .2, .13, [.95, .35, .3], 1);
+      drawMesh(meshes.prop.gem, centerX(b), defence.height + .5 + Math.sin(now * 4) * .05, centerZ(b), now * 2, .09, .14, .09, [.95, .35, .3], 1);
     }
   }
 }
@@ -179,14 +185,14 @@ function drawArrows() {
 }
 
 function drawBars() {
-  for (const u of units) if (u.hp < u.maxHp) drawBar(u.x, UNITS[u.kind].look.barHeight || .95, u.z, .5, u.hp / u.maxHp, HEALTH_COLORS[u.team]);
+  for (const u of units) if (u.hp < u.maxHp) drawBar(u.x, UNITS[u.kind].look.barHeight || .7, u.z, .36, u.hp / u.maxHp, HEALTH_COLORS[u.team]);
   for (const b of buildings) {
-    const def = BUILDINGS[b.type], top = def.barHeight ?? 1.6;
+    const def = BUILDINGS[b.type], top = def.barHeight ?? 1;
     if (!b.built && !isLinkable(b.type)) {            // construction progress, or how much of the material has arrived
       let have = 0, need = 0;
       for (const r of RESOURCE_IDS) { have += b.have[r]; need += b.need[r]; }
-      drawBar(centerX(b), top * .7, centerZ(b), b.size * .6, b.progress > 0 ? b.progress : have / (need || 1), b.progress > 0 ? [.95, .78, .3] : [.75, .68, .55]);
-    } else if (b.built && b.hp < b.maxHp) drawBar(centerX(b), top, centerZ(b), Math.min(1.4, b.size * .55), b.hp / b.maxHp, HEALTH_COLORS[b.team]);
+      drawBar(centerX(b), top * .7, centerZ(b), b.size * .5, b.progress > 0 ? b.progress : have / (need || 1), b.progress > 0 ? [.95, .78, .3] : [.75, .68, .55]);
+    } else if (b.built && b.hp < b.maxHp) drawBar(centerX(b), top, centerZ(b), Math.min(1, b.size * .5), b.hp / b.maxHp, HEALTH_COLORS[b.team]);
   }
 }
 

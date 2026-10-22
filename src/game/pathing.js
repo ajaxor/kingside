@@ -3,14 +3,20 @@
 import { MAP_SIZE as N } from '../core/config.js';
 import { clamp } from '../core/math.js';
 import { ground, nodeKind } from '../core/world.js';
+import { isLinkable } from '../data/buildings.js';
 import { TERRAIN, TERRAIN_INFO } from '../data/terrain.js';
 import { buildingAt, inBounds, isPlanOnly } from './query.js';
 
 /**
- * What it costs `team` to step onto tile k; 0 means it cannot. Water and trees/rock block everyone. Buildings block, except your own
- * gates, plans nobody has started, and traps. `breaking` lets a unit plan a path through enemy buildings (at a high cost) because it
- * will hack its way through.
+ * What it costs `team` to step onto tile k; 0 means it cannot. Water and resource tiles block everyone. Walls, palisades and enemy
+ * buildings block. A building of your own is not a wall: its model sits in the middle of the tile and leaves a walkway round the
+ * edge, so your people may pass through the tile (a little slower to plan, see RIM_COST), keeping to the rim (see rimWaypoint in
+ * movement.js). Your own gates, plans nobody has started and traps cost like ground. `breaking` lets a unit plan a path through enemy
+ * buildings (at a high cost) because it will hack its way through.
  */
+/** Stepping through a tile that has one of your own buildings on it costs this many times as much as open ground. */
+const RIM_COST = 1.6;
+
 export function walkCost(team, k, breaking) {
   const g = ground[k];
   if (g === TERRAIN.WATER || nodeKind[k]) return 0;
@@ -18,7 +24,7 @@ export function walkCost(team, k, breaking) {
   if (b) {
     if (b.type === 'trap') return 1.3;
     if (!b.built && isPlanOnly(b)) return TERRAIN_INFO[g].pathCost;
-    if (b.team === team) return b.type === 'gate' ? 1.1 : 0;
+    if (b.team === team) return b.type === 'gate' ? 1.1 : isLinkable(b.type) ? 0 : TERRAIN_INFO[g].pathCost * RIM_COST;
     return breaking ? 12 : 0;
   }
   return TERRAIN_INFO[g].pathCost;

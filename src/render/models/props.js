@@ -10,11 +10,11 @@ export const PROPS = {
   disc(m) { m.disc(0, 0, 0, 1, 12, [0, 0, 0]); },
   gem(m) { m.blob(0, 0, 0, 1, 1, 1, [1, 1, 1], 0, null, 4, 2); },
   puff(m) { m.blob(0, 0, 0, 1, 1, 1, [1, 1, 1], .3, mulberry(3), 6, 3); },
-  crop(m) { for (const x of [-.55, 0, .55]) m.box(x - .2, .05, -.85, x + .2, .4, .85, C.cropG, C.crop); },   // three rows
-  arrow(m) { m.box(0, 0, -.02, .5, .035, .02, C.woodD); m.box(.42, -.02, -.04, .52, .055, .04, C.steel); },
+  crop(m) { for (const x of [-.55, 0, .55]) m.box(x - .2, .05, -.85, x + .2, .3, .85, C.cropG, C.crop); },   // three rows
+  arrow(m) { m.box(0, 0, -.015, .3, .02, .015, C.woodD); m.box(.26, -.015, -.03, .33, .035, .03, C.steel); },
   scaffold(m) {
-    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) m.box(x * .92 - .05, 0, z * .92 - .05, x * .92 + .05, 1, z * .92 + .05, C.woodD);
-    m.box(-.96, .5, .86, .96, .58, .98, C.wood);
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) m.box(x * .62 - .04, 0, z * .62 - .04, x * .62 + .04, 1, z * .62 + .04, C.woodD);
+    m.box(-.66, .5, .58, .66, .58, .66, C.wood);
   },
   foundation(m) { m.box(-.5, 0, -.5, .5, .06, .5, [.78, .70, .54]); },
 };

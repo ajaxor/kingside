@@ -10,13 +10,14 @@ export const TERRAIN_INFO = {
   [TERRAIN.FORD]: { height: -.14, speed: .6, pathCost: 1.5 },
 };
 
-/** A harvestable thing on a land tile (0 = nothing). Workers gather these; each harvest takes one from the tile's amount. */
+/** A harvestable thing on a land tile (0 = nothing). Workers gather these; each harvest takes one from the tile's amount, so a tile is
+ *  worked many times before it is cleared. Rock takes far longer to clear than trees. */
 export const NODE = { NONE: 0, TREE: 1, STONE: 2, ORE: 3 };
 
 export const NODE_INFO = {
-  [NODE.TREE]: { name: 'tree', amount: 3 },
-  [NODE.STONE]: { name: 'stone', amount: 6 },
-  [NODE.ORE]: { name: 'iron ore', amount: 5 },
+  [NODE.TREE]: { name: 'tree', amount: 4 },
+  [NODE.STONE]: { name: 'stone', amount: 16 },
+  [NODE.ORE]: { name: 'iron ore', amount: 12 },
 };
 
 /** State of a tilled plot (src/core/world.js `field`). A farmer tills, then plants, then harvests, which returns it to TILLED. */

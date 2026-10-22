@@ -3,6 +3,7 @@
 
 import { MAP_SIZE as N } from '../core/config.js';
 import { makeNoise, mulberry } from '../core/random.js';
+import { BUILDINGS } from '../data/buildings.js';
 import { MAP_GEN } from '../data/map.js';
 import { NODE, NODE_INFO, TERRAIN } from '../data/terrain.js';
 import { ground, nearWater, nodeKind, nodeLeft, road, tileRandom, grassNoise } from '../core/world.js';
@@ -14,21 +15,22 @@ const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 export const mirror = (x, z) => [N - x, N - z];
 
 /** The centre of the player's keep, in tiles. */
-export const playerKeepCenter = () => [MAP_GEN.keep[0] + 1.5, MAP_GEN.keep[1] + 1.5];
+export const playerKeepCenter = () => [MAP_GEN.keep[0] + BUILDINGS.keep.size / 2, MAP_GEN.keep[1] + BUILDINGS.keep.size / 2];
 
 /** Fill the map arrays (already cleared by resetWorld) from a seed. */
 export function generateMap(seed) {
   const rng = mulberry(seed);
   const [n1, n2, n3, n4, n5] = [0, 1, 2, 3, 4].map(() => makeNoise(rng));
   const phase1 = rng() * 6.28, phase2 = rng() * 6.28;
-  const fords = [N * .24 + rng() * 3, N * .5 + (rng() - .5) * 4, N * .76 - rng() * 3];
+  const K = N / 48;                                  // the river and fords were designed for a 48-tile map
+  const fords = [N * .24 + rng() * 3 * K, N * .5 + (rng() - .5) * 4 * K, N * .76 - rng() * 3 * K];
 
   // The river runs corner to corner. u is the distance along the diagonal and v the distance across it.
   for (let j = 0; j < N; j++) {
     for (let i = 0; i < N; i++) {
       const k = j * N + i, x = i + .5, z = j + .5;
       const u = (x + z) / 2, v = (x - z) / Math.SQRT2;
-      const centre = v - 3.2 * Math.sin(u * .16 + phase1) - 1.4 * Math.sin(u * .37 + phase2);
+      const centre = v - 3.2 * K * Math.sin(u / K * .16 + phase1) - 1.4 * K * Math.sin(u / K * .37 + phase2);
       const halfWidth = MAP_GEN.riverWidth + .4 * n4(i * .2, j * .2);
       if (Math.abs(centre) < halfWidth) ground[k] = fords.some((f) => Math.abs(u - f) < 1.25) ? TERRAIN.FORD : TERRAIN.WATER;
       tileRandom[k] = rng();

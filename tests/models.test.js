@@ -4,7 +4,7 @@ import { BUILDING_MODELS, buildBuildingModel } from '../src/render/models/buildi
 import { buildUnitModel } from '../src/render/models/units.js';
 import { PROPS, buildProp } from '../src/render/models/props.js';
 import { UNIT_KINDS } from '../src/data/units.js';
-import { buildTerrain } from '../src/render/terrain.js';
+import { buildTerrain, buildNodes } from '../src/render/terrain.js';
 import { newGame } from '../src/game/flow.js';
 
 const sound = (m, what) => {
@@ -25,4 +25,5 @@ test('every prop builds', () => { for (const id of Object.keys(PROPS)) sound(bui
 test('the terrain of a generated map builds', () => {
   newGame({ seed: 12345 });
   sound(buildTerrain(), 'terrain');
+  sound(buildNodes(), 'nodes');
 });

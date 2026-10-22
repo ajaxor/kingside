@@ -19,4 +19,7 @@ Ideas and follow-ups, roughly in priority order.
 - Strategic zoom: below a certain camera height, swap units for bold team-coloured pips so a big army still reads at a glance.
 - Rotate the camera in 90 degree steps (needs the light bands re-tuned per heading, see tech-debt.md).
 - A "Look" setting on the title screen: flat (default), tilt-shift miniature, and a high-contrast mode.
-
+- Resource tiles that regrow (trees) after being cleared, or a forester building.
+- Show how much is left in a node when hovering it (a tooltip with harvests remaining).
+- Per-kind harvest yield and tool upgrades so rock gets faster to clear later in a game.
+- Let people visibly queue and step aside on a shared building rim.

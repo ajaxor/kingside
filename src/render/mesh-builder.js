@@ -1,4 +1,4 @@
-// MeshBuilder: builds low-poly models out of boxes, roofs, cones, blobs and discs. It only collects triangles (positions, normals and
+// MeshBuilder: builds low-poly models out of boxes, roofs, cones, domes, blobs and discs. It only collects triangles (positions, normals and
 // colours as flat arrays), so it needs no WebGL and models can be built and tested anywhere.
 //
 // Every shape takes `ctr`, a point inside it, so each face's normal can be flipped to point away from it: shapes never need their
@@ -95,6 +95,26 @@ export class MeshBuilder {
         const c = colf ? colf(a, b) : col;
         this.tri(p00, p10, p11, c, ctr);
         this.tri(p00, p11, p01, c, ctr);
+      }
+    }
+  }
+
+  /** The upper half of a ball (radius rx x ry x rz), `rings` bands of `seg` facets: a rounded cap to sit on a cylinder. */
+  dome(cx, cy, cz, rx, ry, rz, col, seg = 8, rings = 2) {
+    const V = [];
+    for (let a = 0; a <= rings; a++) {
+      const ph = a / rings * Math.PI / 2;
+      for (let b = 0; b < seg; b++) {
+        const th = b / seg * TAU;
+        V.push([cx + Math.sin(ph) * Math.cos(th) * rx, cy + Math.cos(ph) * ry, cz + Math.sin(ph) * Math.sin(th) * rz]);
+      }
+    }
+    const ctr = [cx, cy - ry, cz];
+    for (let a = 0; a < rings; a++) {
+      for (let b = 0; b < seg; b++) {
+        const p00 = V[a * seg + b], p01 = V[a * seg + (b + 1) % seg], p10 = V[(a + 1) * seg + b], p11 = V[(a + 1) * seg + (b + 1) % seg];
+        this.tri(p00, p10, p11, col, ctr);
+        this.tri(p00, p11, p01, col, ctr);
       }
     }
   }

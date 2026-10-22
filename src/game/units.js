@@ -9,7 +9,7 @@ import { removeItem } from '../core/util.js';
 import { arrows, claims, effects, game, units } from '../core/world.js';
 import { UNITS, capGroup, isFighter, isSiege, isTroop, isWorker } from '../data/units.js';
 import { walkCost } from './pathing.js';
-import { centerX, centerZ, inBounds } from './query.js';
+import { buildingAt, centerX, centerZ, inBounds } from './query.js';
 import { notify } from './notify.js';
 
 /** The free tile next to a building nearest the middle of its south face, for something to appear on. */
@@ -20,7 +20,7 @@ export function freeTileBeside(b, team) {
     for (let x = b.i - 1; x <= b.i + b.size; x++) {
       if (!inBounds(x, y)) continue;
       if (x >= b.i && x < b.i + b.size && y >= b.j && y < b.j + b.size) continue;
-      if (!walkCost(team, y * N + x, false)) continue;
+      if (!walkCost(team, y * N + x, false) || buildingAt(y * N + x)) continue;   // open ground only: not inside another building's tile
       const d = Math.hypot(x + .5 - fx, y + .5 - fz) + random() * .5;
       if (d < bestDist) { bestDist = d; best = [x, y]; }
     }

@@ -69,7 +69,7 @@ export function thinkGatherer(u, dt) {
       if (u.timer <= 0) {
         nodeLeft[k]--;
         if (nodeLeft[k] <= 0) { nodeKind[k] = 0; marked[k] = 0; }
-        game.terrainDirty = true;
+        game.nodesDirty = true;
         releaseClaim(u);
         u.carry = { item: gather.yields, amount: gather.amount };
         goToBuilding(u, u.home);

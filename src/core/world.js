@@ -37,7 +37,8 @@ export const game = {
   time: 0, over: false, running: false, paused: false, speed: 1, seed: 0,
   nextBuildingId: 1, nextUnitId: 1,
   nearTimer: 0,                                       // how long until the next "troops closing on your keep" check
-  terrainDirty: true,                                 // the terrain mesh needs rebuilding (a node was harvested)
+  terrainDirty: true,                                 // the ground mesh needs building (a new game)
+  nodesDirty: true,                                   // the resource tiles need redrawing (a node was worked or cleared)
 };
 
 export function makeTeam(ai) {
@@ -53,6 +54,6 @@ export function resetWorld(seed, ai = [false, true]) {
   buildings.length = 0; buildingsById.clear(); units.length = 0; arrows.length = 0; effects.length = 0;
   teams.length = 0;
   for (let t = 0; t < TEAM_COUNT; t++) teams.push(makeTeam(!!ai[t]));
-  Object.assign(game, { time: 0, over: false, running: false, paused: false, speed: 1, seed, nextBuildingId: 1, nextUnitId: 1, nearTimer: 0, terrainDirty: true });
+  Object.assign(game, { time: 0, over: false, running: false, paused: false, speed: 1, seed, nextBuildingId: 1, nextUnitId: 1, nearTimer: 0, terrainDirty: true, nodesDirty: true });
 }
 

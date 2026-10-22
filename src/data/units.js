@@ -13,7 +13,8 @@
 //   needs     { good, count } equipment consumed to train the unit
 //   train     { cost, time } what it costs and how long it takes to train
 //   artillery shoots buildings from range instead of ramming them
-//   look      colour, scale, barHeight (health bar height), mounted: how it is drawn (src/render/models/)
+//   look      colour, scale, barHeight (health bar height), mounted: how it is drawn (src/render/models/). Everyone is drawn about
+//             .45 tiles tall at scale 1, so a tile has room for a building and people walking round it.
 
 import { NODE } from './terrain.js';
 
@@ -27,11 +28,11 @@ export const UNITS = {
   },
   quarryman: {
     name: 'Quarryman', role: 'worker', brain: 'gatherer', hp: 25, speed: 1.5, look: { color: [.64, .62, .58] },
-    gather: { node: NODE.STONE, yields: 'stone', amount: 5, time: 3.0, claimLimit: 2 },
+    gather: { node: NODE.STONE, yields: 'stone', amount: 5, time: 3.4, claimLimit: 2 },
   },
   miner: {
     name: 'Miner', role: 'worker', brain: 'gatherer', hp: 25, speed: 1.5, look: { color: [.40, .38, .42] },
-    gather: { node: NODE.ORE, yields: 'iron', amount: 4, time: 3.4, claimLimit: 2 },
+    gather: { node: NODE.ORE, yields: 'iron', amount: 4, time: 3.6, claimLimit: 2 },
   },
   runner: { name: 'Runner', role: 'worker', brain: 'runner', hp: 25, speed: 2.1, look: { color: [.80, .64, .44] } },
   farmer: { name: 'Farmer', role: 'worker', brain: 'farmer', hp: 25, speed: 1.6, look: { color: [.82, .70, .42] } },
@@ -55,12 +56,12 @@ export const UNITS = {
   },
   knight: {
     name: 'Knight', role: 'troop', family: 'infantry', hp: 170, speed: 2.5, damage: 15, range: 1, cooldown: 1,
-    look: { color: [.62, .64, .7], mounted: true, barHeight: 1.55 },
+    look: { color: [.62, .64, .7], mounted: true, scale: .8, barHeight: .8 },
     needs: { good: 'weapons', count: 1 }, train: { cost: { food: 20, iron: 22 }, time: 20 },
   },
   halberd: {
     name: 'Halberdier', role: 'troop', family: 'infantry', hp: 130, speed: 1.5, damage: 18, range: 1.2, cooldown: 1.3,
-    look: { color: [.5, .52, .58], barHeight: 1.4 },
+    look: { color: [.5, .52, .58], barHeight: .95 },
     needs: { good: 'weapons', count: 1 }, train: { cost: { food: 12, iron: 14 }, time: 16 },
   },
   archer: {
@@ -77,31 +78,31 @@ export const UNITS = {
   },
   officer: {
     name: 'Officer', role: 'troop', command: 1, hp: 140, speed: 1.6, damage: 10, range: 1, cooldown: 1,
-    look: { color: [.6, .62, .68], barHeight: 1.5 }, train: { cost: { food: 20, iron: 10 }, time: 28 },
+    look: { color: [.6, .62, .68], barHeight: .8 }, train: { cost: { food: 20, iron: 10 }, time: 28 },
   },
   general: {
     name: 'General', role: 'troop', command: 2, hp: 260, speed: 1.8, damage: 16, range: 1, cooldown: 1,
-    look: { color: [.7, .66, .5], mounted: true, barHeight: 1.7 }, train: { cost: { food: 40, iron: 30 }, time: 50 },
+    look: { color: [.7, .66, .5], mounted: true, scale: .8, barHeight: .9 }, train: { cost: { food: 40, iron: 30 }, time: 50 },
   },
 
   ram: {
     name: 'Battering Ram', role: 'siege', hp: 220, speed: 1.0, buildingDamage: 28, range: 1, cooldown: 1.6,
-    look: { color: [.5, .4, .3], scale: 1.15, barHeight: 1.2 },
+    look: { color: [.5, .4, .3], scale: .75, barHeight: .6 },
     needs: { good: 'parts', count: 2 }, train: { cost: { wood: 30, iron: 5 }, time: 30 },
   },
   ironram: {
     name: 'Ironclad Ram', role: 'siege', hp: 450, speed: .95, buildingDamage: 50, range: 1, cooldown: 1.7,
-    look: { color: [.5, .4, .3], scale: 1.15, barHeight: 1.2 },
+    look: { color: [.5, .4, .3], scale: .75, barHeight: .6 },
     needs: { good: 'parts', count: 3 }, train: { cost: { wood: 40, iron: 25 }, time: 40 },
   },
   catapult: {
     name: 'Catapult', role: 'siege', artillery: true, hp: 90, speed: .9, buildingDamage: 30, range: 7.5, cooldown: 3.5,
-    look: { color: [.5, .4, .3], scale: 1.15, barHeight: 1.2 },
+    look: { color: [.5, .4, .3], scale: .75, barHeight: .6 },
     needs: { good: 'parts', count: 3 }, train: { cost: { wood: 35, stone: 15, iron: 8 }, time: 35 },
   },
   trebuchet: {
     name: 'Trebuchet', role: 'siege', artillery: true, hp: 110, speed: .8, buildingDamage: 60, range: 10.5, cooldown: 4.5,
-    look: { color: [.5, .4, .3], scale: 1.15, barHeight: 1.5 },
+    look: { color: [.5, .4, .3], scale: .75, barHeight: .75 },
     needs: { good: 'parts', count: 4 }, train: { cost: { wood: 50, stone: 25, iron: 20 }, time: 50 },
   },
 };

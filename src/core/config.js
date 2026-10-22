@@ -1,6 +1,6 @@
 // Fixed constants of the game world. Tunable gameplay numbers (costs, speeds, timers) live in src/data/.
 
-export const MAP_SIZE = 48;                 // the map is MAP_SIZE x MAP_SIZE tiles
+export const MAP_SIZE = 72;                 // the map is MAP_SIZE x MAP_SIZE tiles. A tile is about four people wide; most buildings fill one.
 export const TILES = MAP_SIZE * MAP_SIZE;
 export const PLAYER = 0;                    // team indices
 export const ENEMY = 1;
