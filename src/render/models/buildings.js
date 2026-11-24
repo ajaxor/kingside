@@ -150,9 +150,9 @@ export const BUILDING_MODELS = {
   hall(m, T) {                                                         // a tall banner on a gold step: the commander
     base(m, T, 'hall');
     disc(m, 0, H, 0, .18, .05, C.gold, 10);
-    m.box(-.016, H + .05, -.016, .016, H + .98, .016, C.woodD);
-    m.box(.016, H + .5, -.012, .4, H + .94, .012, T); m.box(.016, H + .5, -.014, .4, H + .56, .014, C.gold);
-    m.blob(0, H + 1.0, 0, .05, .05, .05, C.gold, 0, null, 6, 3);
+    m.box(-.016, H + .05, -.016, .016, H + .42, .016, C.woodD);
+    m.box(.016, H + .16, -.012, .34, H + .38, .012, T); m.box(.016, H + .16, -.014, .34, H + .21, .014, C.gold);
+    m.blob(0, H + .44, 0, .05, .05, .05, C.gold, 0, null, 6, 3);
   },
   workshop(m, T) {                                                     // a battering ram on wheels
     base(m, T, 'workshop');

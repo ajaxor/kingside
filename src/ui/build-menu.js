@@ -1,6 +1,6 @@
 // The build controls. A dock along the bottom has the three tools (Look, Mark, Raze) and one button per building category; a category opens a
 // sheet of big cards. The other way in is to tap open ground on the map: a menu opens right there with the same categories and cards for
-// what can be built on that tile. Choosing a building puts its outline down; touching the outline again builds it (see placement.js).
+// what can be built on that tile. Choosing a building puts its outline down; touching the outline again builds it and closes the menu (see placement.js).
 
 import { PLAYER } from '../core/config.js';
 import { BUILDINGS, BUILD_CATEGORIES } from '../data/buildings.js';
@@ -9,7 +9,7 @@ import { canPlace } from '../game/buildings.js';
 import { icons } from '../render/icons.js';
 import { $ } from './dom.js';
 import { itemIcon } from './items.js';
-import { chooseBuilding } from './placement.js';
+import { chooseBuilding, ghostTile } from './placement.js';
 import { onUiChange, setMenuCategory, setMode, toggleSheet, ui, openMenu } from './state.js';
 
 export const costHtml = (cost, stock) => Object.keys(cost).filter((r) => cost[r] > 0)
@@ -41,7 +41,7 @@ function renderMenu() {
   const cat = category(menu.category) || BUILD_CATEGORIES[0];
   el.style.setProperty('--c', rgb(cat.color));
   const tabs = BUILD_CATEGORIES.map((c) => `<button class="tab${c.id === cat.id ? ' on' : ''}" data-tab="${c.id}" style="--c:${rgb(c.color)}"><img alt="" src="${icons[c.icon] || ''}"><span>${c.name}</span></button>`).join('');
-  el.innerHTML = `<div class="tabs">${tabs}</div><div class="grid">${cat.types.map((t) => cardHtml(t, !BUILDINGS[t].paint && !canPlace(t, menu.i, menu.j))).join('')}</div><button class="x" data-close aria-label="Close menu">Close</button>`;
+  el.innerHTML = `<div class="tabs">${tabs}</div><div class="grid">${cat.types.map((t) => cardHtml(t, !BUILDINGS[t].paint && !canPlace(t, ...ghostTile(t, menu.i + .5, menu.j + .5)))).join('')}</div><button class="x" data-close aria-label="Close menu">Close</button>`;
   // Sit near the tapped spot, on the side with more room, and never off the screen.
   const w = el.offsetWidth, h = el.offsetHeight, vw = innerWidth, vh = innerHeight;
   const left = Math.max(8, Math.min(vw - w - 8, menu.sx - w / 2));

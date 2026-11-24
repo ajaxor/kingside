@@ -33,3 +33,9 @@ Ideas and follow-ups, roughly in priority order.
 - Drag a building card from the sheet straight onto the map.
 - A tiny "what is this?" label over buildings when zoomed out, since the glyphs are the only cue.
 - Show a building's category colour as a legend in the help screen.
+- One-tap placing: let a card picked from the tap-to-build menu build straight away (the tapped tile is already the place), perhaps as a setting, instead of putting down the outline to touch again.
+- A "keep drawing" toggle for walls and fields picked from the map menu (the interface now closes after the first piece).
+- Warn on the outline when a building would wall people in or cut a crew building off from the keep.
+- Let people queue at a door or a gate instead of shoving past each other (they now each fill a tile).
+- Re-tune the default camera distance and zoom limits for tile-sized people and bigger buildings.
+

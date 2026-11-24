@@ -18,7 +18,8 @@ import { hurtUnit } from './units.js';
 
 const WARN_RADIUS = 11;     // enemy troops this close to the player's keep trigger a warning
 
-/** Keep units from standing on top of each other: soldiers hold formation spacing, workers only nudge apart when both are still. */
+/** Keep units from standing on top of each other: a person fills a tile, so nearly a tile of room each. Soldiers hold formation spacing,
+ *  workers only nudge apart when both are still. */
 function separateUnits() {
   const isMilitary = (u) => UNITS[u.kind].role === 'troop' || UNITS[u.kind].role === 'patrol' || isSiege(u.kind);
   for (let a = 0; a < units.length; a++) {
@@ -30,7 +31,7 @@ function separateUnits() {
       if (q.dead) continue;
       const mil = pm && isMilitary(q);
       if (!mil && p.moving && q.moving) continue;
-      const R = mil ? (p.team === q.team ? (isSiege(p.kind) || isSiege(q.kind) ? .75 : .5) : .38) : .3;
+      const R = mil ? (p.team === q.team ? (isSiege(p.kind) || isSiege(q.kind) ? 1.4 : .9) : .8) : .8;
       let dx = q.x - p.x, dz = q.z - p.z, d2 = dx * dx + dz * dz;
       if (d2 >= R * R) continue;
       if (d2 < 1e-6) { const angle = random() * 6.283; dx = Math.cos(angle) * .01; dz = Math.sin(angle) * .01; d2 = dx * dx + dz * dz; }

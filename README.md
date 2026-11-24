@@ -24,8 +24,8 @@ The game is made of ES modules, which browsers will not load from `file://`, so 
 | `src/data/` | **the game's content as data**: `units`, `buildings`, `upgrades` (trees), `resources`, `goods`, `terrain`, `balance`, `ai`, `map`, `help` |
 | `src/game/` | the rules: map generation (a river and three lanes), lanes and who walks them, pathing, movement, units, buildings and their per-step behaviour, the computer player, the player's commands, one simulation `tick` |
 | `src/game/brains/` | one behaviour per kind of unit (builder, gatherer, runner, farmer, patrol, troop, siege); a unit's data names its brain |
-| `src/render/` | WebGL: `gl/` (context and the flat three-band shader, optional tilt-shift blur, matrices), `models/` (every building (one tile: a team ring, a category-coloured plinth and one bold pictogram), unit (cylinder, dome, round head, one tool or hat) and prop, kept deliberately plain), `terrain.js` (the static ground mesh, and the merged, rounded resource patches rebuilt as they are worked), `scene.js` (a frame), `camera.js`, `icons.js` (build tray pictures) |
-| `src/ui/` | page markup, resource bar, build dock, sheet and tap-to-build menu (two-touch placement), context panel, input, toasts, end card, title screen |
+| `src/render/` | WebGL: `gl/` (context and the flat three-band shader, optional tilt-shift blur, matrices), `models/` (every building (a team ring, a category-coloured plinth and one bold pictogram, drawn to fill its 1 to 3 tile footprint), unit (cylinder, dome, round head, one tool or hat, drawn to fill one tile) and prop, kept deliberately plain), `terrain.js` (the static ground mesh, and the merged, rounded resource patches rebuilt as they are worked), `scene.js` (a frame), `camera.js`, `icons.js` (build tray pictures) |
+| `src/ui/` | page markup, resource bar, build dock, sheet and tap-to-build menu (two-touch placement, closing once the building is placed), context panel, input, toasts, end card, title screen |
 | `tools/` | `stamp.mjs` writes `build-info.js` from git; `serve.mjs` is the dev server |
 | `tests/` | `node --test` |
 
@@ -33,7 +33,11 @@ The game is made of ES modules, which browsers will not load from `file://`, so 
 
 A unit says what it is (`role`, `brain`, stats, what it gathers or needs, what it costs to train, how it looks). A building says what it does (crew, supply, defence, income, training tree, courtyard, trap, wall-like). The rules ask the data: "does this building have `defence`?", not "is this a tower?". `tests/data.test.js` checks that every reference between tables points at something real.
 
-### Simulation and picture are separate
+#### Scale
+
+A tile is the unit of everything. A person fills one tile (about .76 wide; `UNIT_WIDTH` in `src/render/models/units.js`), siege machines are about two tiles long, workplaces and barracks fill 2x2, the keep 3x3, towers, walls, gates and traps one tile. Because nobody can squeeze past a building on its own tile, buildings are solid to everyone (`walkCost` in `src/game/pathing.js`); people walk round them, and only gates, traps and plans nothing has been delivered to can be stepped on.
+
+## Simulation and picture are separate
 
 `src/game/` changes the world (`src/core/world.js`) and emits events; `src/render/` and `src/ui/` read the world and draw it. Randomness goes through `random()` so a test can seed it, and the computer player can play either side, so `tests/simulation.test.js` plays whole seeded AI-vs-AI games headlessly.
 

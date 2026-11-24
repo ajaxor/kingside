@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILDING_MODELS, buildBuildingModel } from '../src/render/models/buildings.js';
-import { buildUnitModel } from '../src/render/models/units.js';
+import { buildUnitModel, UNIT_WIDTH } from '../src/render/models/units.js';
+import { modelRise, modelScale } from '../src/render/scene.js';
+import { BUILDINGS } from '../src/data/buildings.js';
 import { PROPS, buildProp } from '../src/render/models/props.js';
 import { UNIT_KINDS } from '../src/data/units.js';
 import { buildTerrain, buildNodes } from '../src/render/terrain.js';
@@ -26,4 +28,23 @@ test('the terrain of a generated map builds', () => {
   newGame({ seed: 12345 });
   sound(buildTerrain(), 'terrain');
   sound(buildNodes(), 'nodes');
+});
+
+const extent = (m, axis) => { let lo = Infinity, hi = -Infinity; for (let i = axis; i < m.p.length; i += 3) { lo = Math.min(lo, m.p[i]); hi = Math.max(hi, m.p[i]); } return hi - lo; };
+
+test('a person is drawn about a tile wide: the body is a .2 cylinder in the model, stretched by UNIT_WIDTH', () => {
+  assert.ok(UNIT_WIDTH * .2 >= .7 && UNIT_WIDTH * .2 <= 1, `a body is ${(UNIT_WIDTH * .2).toFixed(2)} tiles wide`);
+});
+
+test('every building is drawn to fill most of its footprint, and not spill out of it', () => {
+  for (const [type, def] of Object.entries(BUILDINGS)) {
+    if (def.linkable || def.paint) continue;                     // walls are drawn from posts and links, fields are tiles
+    const m = buildBuildingModel(type, 0), s = modelScale(type);
+    for (const axis of [0, 2]) {
+      const drawn = extent(m, axis) * s;
+      assert.ok(drawn >= def.size * .7 && drawn <= def.size, `${type}: ${drawn.toFixed(2)} tiles across a ${def.size}-tile footprint`);
+    }
+    assert.ok(extent(m, 1) * s * modelRise(type) > 0, type);
+  }
+  assert.ok(Object.values(BUILDINGS).some((d) => d.size === 3) && Object.values(BUILDINGS).filter((d) => d.size === 2).length > 8, 'the keep and most workplaces are multi-tile');
 });

@@ -105,7 +105,7 @@ export function killUnit(u, quiet) {
   if (u.home && !isTroop(u.kind) && !isSiege(u.kind)) removeItem(u.home.workers, u);   // workers and patrols are housed in their building
   if (u.leader) removeItem(u.leader.followers, u);
   if (!quiet) {
-    effects.push({ x: u.x, y: .25, z: u.z, t: 0, d: .5, size: .25, color: [.85, .83, .8] });
+    effects.push({ x: u.x, y: .55, z: u.z, t: 0, d: .5, size: .6, color: [.85, .83, .8] });
     if (u.team === PLAYER && isWorker(u.kind)) notify('Enemies killed one of your ' + UNITS[u.kind].name.toLowerCase() + 's', 'wk', 14, 'warn');
   }
 }

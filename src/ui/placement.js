@@ -1,5 +1,7 @@
 // Placing a building takes two touches: the first puts an outline on the map (and shows what it costs and whether it fits), the second,
-// on the outline itself, builds it. Everything the touch handlers and the panel's Build button share is here.
+// on the outline itself, builds it, and the build interface closes. There are two ways to the outline: tap open ground and pick from the
+// menu that opens there (place, then building), or pick from the dock's sheet and tap the map (building, then place).
+// Everything the touch handlers and the panel's Build button share is here.
 
 import { BUILDINGS } from '../data/buildings.js';
 import { canPlace } from '../game/buildings.js';
@@ -21,23 +23,26 @@ export function onGhost(i, j) {
   return i >= ui.ghost[0] && i < ui.ghost[0] + size && j >= ui.ghost[1] && j < ui.ghost[1] + size;
 }
 
-/** Build what the outline shows, if it fits. The tool stays on, ready for the next one. Returns whether it was built. */
+/** Build what the outline shows, if it fits, and close the build interface (tool, outline, menu and sheet). Returns whether it was built. */
 export function confirmGhost() {
   if (ui.mode !== 'build' || !ui.ghost) return false;
   const [i, j] = ui.ghost;
   if (!canPlace(ui.buildType, i, j) || !planBuilding(ui.buildType, i, j)) return false;
-  setGhost(null);
+  setMode('look');
   return true;
 }
 
 /**
- * The player picked `type` for tile (i, j) (from the menu on the map, or the sheet with a spot already chosen). Walls and fields are
- * drawn by dragging, so the first piece goes straight down and the tool stays on; anything else gets its outline there to confirm.
+ * The player picked `type` for the tapped tile (i, j) (from the menu on the map), or with no spot yet (from the sheet). A building gets its
+ * outline there, centred on the tapped tile as far as it can be, to confirm. Walls and fields are drawn by dragging, so from the menu the
+ * one piece goes straight down and the interface closes; from the sheet the tool stays on for the drag.
  */
 export function chooseBuilding(type, i, j) {
+  const fromMap = i != null, paints = !!BUILDINGS[type].paint;
+  if (paints && fromMap) { paintTile(type, i, j, { set: null }); setMode('look'); return; }
   const old = ui.mode === 'build' ? ui.ghost : null;
   setMode('build', type);
-  if (BUILDINGS[type].paint) { if (i != null) paintTile(type, i, j, { set: null }); return; }
-  if (i != null) setGhost([i, j]);
+  if (paints) return;
+  if (fromMap) setGhost(ghostTile(type, i + .5, j + .5));
   else if (old) setGhost(old);
 }

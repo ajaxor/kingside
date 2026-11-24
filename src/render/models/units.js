@@ -1,12 +1,18 @@
 // Models of the units, as plain as they can be so they read at a glance. Every person is a cylinder with a rounded top, a round head, and
 // whatever sets the job apart: a hat or helmet and one tool or weapon. The body is one solid colour: the team's for troops and patrols, the
 // colour in the unit's data (`look.color`, or `look.tunic` if set) for workers, who are told apart by it and by their hat and tool. Horsemen and siege machines are a handful
-// of boxes. A person stands about .45 tiles tall and .2 wide, so a tile has room for a building and people walking round it.
+// of boxes. People are modelled small (about .45 tall and .2 wide) and drawn UNIT_WIDTH times wider and UNIT_HEIGHT times taller, so a person
+// fills a tile (about .76 wide, 1.2 tall) like a chess piece on its square. Because the height scale is smaller than the width scale, the round
+// parts (dome, head, cap) are modelled `SQUASH` taller than wide so they come out round.
 
 import { mulberry } from '../../core/random.js';
 import { UNITS } from '../../data/units.js';
 import { MeshBuilder } from '../mesh-builder.js';
 import { C, TEAM_COLORS } from '../palette.js';
+
+export const UNIT_WIDTH = 3.8, UNIT_HEIGHT = 2.7;        // how much a person's model is stretched sideways and upwards when drawn
+export const SIEGE_SCALE = 1.5;                          // siege machines are drawn evenly this much bigger (they are about two tiles long)
+const SQUASH = UNIT_WIDTH / UNIT_HEIGHT;
 
 /** A bow seen from the side: a short curved strip plus a string. */
 export function bowShape(m, x, y0, h, bulge, col) {
@@ -23,9 +29,9 @@ export function bowShape(m, x, y0, h, bulge, col) {
 
 // The shapes people are made of. y is up; the body is a cylinder .2 tall under a dome, the head a ball on top of it.
 const HEAD_Y = .375;
-const body = (m, tun, y0 = 0, r = .1) => { m.cyl(0, y0, 0, r, y0 + .2, r, 8, tun); m.dome(0, y0 + .2, 0, r, r, r, tun, 8, 2); };
-const head = (m, y = HEAD_Y) => m.blob(0, y, 0, .072, .072, .072, C.skin, 0, null, 8, 4);
-const cap = (m, col, y = HEAD_Y) => m.dome(0, y + .01, 0, .082, .07, .082, col, 8, 2);                   // a skull cap or helmet
+const body = (m, tun, y0 = 0, r = .1) => { m.cyl(0, y0, 0, r, y0 + .2, r, 8, tun); m.dome(0, y0 + .2, 0, r, r * SQUASH, r, tun, 8, 2); };
+const head = (m, y = HEAD_Y) => m.blob(0, y, 0, .072, .072 * SQUASH, .072, C.skin, 0, null, 8, 4);
+const cap = (m, col, y = HEAD_Y) => m.dome(0, y + .01, 0, .082, .07 * SQUASH, .082, col, 8, 2);                   // a skull cap or helmet
 const brim = (m, col, y = HEAD_Y) => m.cyl(0, y + .01, 0, .105, y + .03, .105, 8, col);                // a ring round the cap
 const hood = (m, col, h = .17, y = HEAD_Y) => m.cyl(0, y - .01, 0, .082, y + h, 0, 8, col);           // a pointed hood or hat
 const pole = (m, y1, col = C.woodD, x = .15, w = .02) => m.box(x - w, 0, -w, x + w, y1, w, col);       // a staff, held at the side
@@ -40,7 +46,7 @@ function mountedModel(m, kind, T, TD) {
   m.box(-.05, .27, .16, .05, .45, .27, hc); m.box(-.045, .38, .24, .045, .47, .38, hc);    // neck and head
   m.box(-.1, .32, -.1, .1, .35, .1, TD);                                                  // saddle cloth
   body(m, T, .32, .075); head(m, .32 + .36); cap(m, helm, .32 + .36);                     // the rider
-  if (general) { pole(m, 1.0, C.woodD, -.17, .015); m.box(-.4, .72, -.02, -.17, 1.0, .02, T); }
+  if (general) { pole(m, .86, C.woodD, -.17, .015); m.box(-.34, .62, -.02, -.17, .86, .02, T); }
   else { m.box(.1, .36, -.3, .14, .42, .42, C.woodD); m.box(.1, .42, .28, .14, .5, .42, T); }
 }
 
@@ -84,7 +90,7 @@ const FOOT_MODELS = {
   engineer(m) { cap(m, [.50, .40, .68]); m.box(-.08, HEAD_Y, .06, .08, HEAD_Y + .03, .09, C.gold); pole(m, .3, C.steelD); m.cyl(.15, .3, 0, .07, .34, .07, 6, C.steelD); },
   quarryman(m) { cap(m, C.rockD); pole(m, .38); bar(m, .06, .34, .26, .4, C.steelD); },
   miner(m) { cap(m, C.dark); m.box(-.025, HEAD_Y + .03, .07, .025, HEAD_Y + .08, .1, C.gold); pole(m, .42); bar(m, .05, .36, .27, .42); },
-  runner(m) { cap(m, C.canvas); pole(m, .62); m.box(.15, .46, -.015, .34, .6, .015, C.canvas); },
+  runner(m) { cap(m, C.canvas); pole(m, .52); m.box(.15, .38, -.015, .27, .5, .015, C.canvas); },
   farmer(m) { m.cyl(0, HEAD_Y + .01, 0, .15, HEAD_Y + .03, .1, 8, C.straw); cap(m, C.straw); pole(m, .55); bar(m, .09, .5, .21, .55); },
   ranger(m) { hood(m, [.22, .42, .26]); bowShape(m, .15, 0, .5, .08, C.woodD); },
   raider(m) {
@@ -92,20 +98,20 @@ const FOOT_MODELS = {
     pole(m, .3); m.blob(.15, .36, 0, .05, .06, .05, C.fire, 0, null, 6, 3);
   },
   soldier(m, tun, T) {
-    cap(m, C.steel); pole(m, .72); m.cyl(.15, .72, 0, .03, .84, 0, 4, C.steel);
+    cap(m, C.steel); pole(m, .5); m.cyl(.15, .5, 0, .03, .6, 0, 4, C.steel);
     m.box(-.15, .1, -.08, -.1, .28, .08, T);
   },
   manatarms(m, tun, T) {
     m.cyl(0, HEAD_Y - .02, 0, .08, HEAD_Y + .1, .07, 8, C.steelD); m.box(-.18, .04, -.1, -.12, .32, .1, T);
     pole(m, .36); m.blob(.15, .4, 0, .06, .06, .06, C.steelD, 0, null, 6, 3);
   },
-  halberd(m) { cap(m, C.steelD); pole(m, .9); bar(m, .15, .62, .3, .8); m.cyl(.15, .9, 0, .03, 1.0, 0, 4, C.steel); },
+  halberd(m) { cap(m, C.steelD); pole(m, .56); bar(m, .15, .38, .26, .52); m.cyl(.15, .56, 0, .03, .66, 0, 4, C.steel); },
   archer(m) { hood(m, [.52, .38, .26]); bowShape(m, .15, 0, .44, .07, C.woodD); },
-  longbow(m) { hood(m, [.40, .50, .30]); bowShape(m, .15, -.02, .78, .1, C.woodD); },
+  longbow(m) { hood(m, [.40, .50, .30]); bowShape(m, .15, -.02, .6, .1, C.woodD); },
   crossbow(m) { cap(m, C.steelD); m.box(.1, .22, -.025, .16, .27, .28, C.woodD); m.box(0, .23, .2, .26, .26, .24, C.woodD); },
   officer(m, tun, T) {
     m.cyl(0, HEAD_Y + .05, 0, .08, HEAD_Y + .11, .06, 8, C.gold); m.box(-.015, HEAD_Y + .08, -.1, .015, HEAD_Y + .17, .1, T);
-    pole(m, .9, C.woodD, -.14, .015); m.box(-.4, .62, -.02, -.14, .88, .02, T); m.box(-.4, .62, -.025, -.14, .68, .025, C.gold);
+    pole(m, .68, C.woodD, -.14, .015); m.box(-.3, .44, -.02, -.14, .66, .02, T); m.box(-.3, .44, -.025, -.14, .5, .025, C.gold);
   },
 };
 

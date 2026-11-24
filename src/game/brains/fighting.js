@@ -22,7 +22,7 @@ export function attackUnit(u, target) {
   u.working = true; u.path = null; u.goal = null;
   if (u.cooldown <= 0) {
     u.cooldown = def.cooldown;
-    if (def.range > 1.5) shootArrow(u.x, .5, u.z, target, def.damage, u.team, u);
+    if (def.range > 1.5) shootArrow(u.x, 1.0, u.z, target, def.damage, u.team, u);
     else hurtUnit(target, def.damage, u);
   }
 }

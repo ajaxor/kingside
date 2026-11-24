@@ -18,9 +18,30 @@ import { camera, cameraEye, FOV } from './camera.js';
 import { lookAt, multiply, perspective } from './gl/matrix.js';
 import { beginScene, drawMesh, endScene, freeMesh, makeMesh, setBlending, setDepthWrite, setFog, setViewProjection, viewportSize } from './gl/context.js';
 import { meshes } from './models/index.js';
+import { SIEGE_SCALE, UNIT_HEIGHT, UNIT_WIDTH } from './models/units.js';
 import { buildTerrain, buildNodes } from './terrain.js';
 
-const UNIT_SCALE = 1;                         // people are about .45 tall; they grow a little as the camera pulls back (zoomBoost)
+// Everyone and everything is drawn to the grid: a person fills one tile (UNIT_WIDTH in models/units.js), a building its whole footprint.
+const MODEL_SPAN = { keep: 2.4 }, DEFAULT_SPAN = .72;     // how many tiles across a building's model is as built (the keep: two and a bit; the rest: a bit under one tile)
+const WALL_HEIGHT = 1.5, WALL_THICK = 1.6;                // walls, palisades and gates are modelled for a thin, low wall; people are bigger than that now
+
+const RISE = 1.5;                                          // the two-tile buildings are low pictograms; stretched up so the people beside them do not tower over them
+
+/** How much to scale a (non-wall) building's model so that it fills its footprint, and how much extra to stretch it upwards. */
+export const modelScale = (type) => BUILDINGS[type].size / (MODEL_SPAN[type] ?? DEFAULT_SPAN);
+export const modelRise = (type) => (BUILDINGS[type].size === 2 ? RISE : 1);
+
+const tops = {};
+/** How high a building is as drawn, in tiles, so its bars and markers can float just above it. */
+function topOf(type) {
+  if (tops[type] === undefined) {
+    const def = BUILDINGS[type], mesh = meshes.building[0][def.models ? def.models.post : type];
+    let y = 0;
+    for (let i = 1; i < mesh.pts.length; i += 3) y = Math.max(y, mesh.pts[i]);
+    tops[type] = y * (def.linkable ? WALL_HEIGHT : modelScale(type) * modelRise(type));
+  }
+  return tops[type];
+}
 const BAR_ROTATION = -Math.PI / 4, BAR_AXIS = [Math.SQRT1_2, 0, Math.SQRT1_2];
 const PLAN_TINT = [.86, .78, .6], HIT_TINT = [1, 1, 1], SHADOW = [.18, .2, .35];   // shadows are the cool violet of the shade band, not black
 const GHOST_OK = [.45, .9, .5], GHOST_BAD = [.95, .35, .3];
@@ -58,16 +79,16 @@ export function render(view) {
   drawBars();
 
   setBlending(true); setDepthWrite(false);
-  for (const u of units) drawMesh(meshes.prop.disc, u.x + .03, .02, u.z - .02, 0, .15, 1, .15, SHADOW, 1, .22);
+  for (const u of units) { const r = footRadius(u); drawMesh(meshes.prop.disc, u.x + r * .2, .02, u.z - r * .13, 0, r, 1, r, SHADOW, 1, .22); }
   for (const b of buildings) {
     if (isPlanOnly(b)) {
-      const s = isLinkable(b.type) ? .7 : b.size * .96;
+      const s = isLinkable(b.type) ? .9 : b.size * .96;
       drawMesh(cube, centerX(b), .03, centerZ(b), 0, s, .05, s, TEAM_COLORS[b.team].roof, 1, .38);
     }
   }
   for (const b of buildings) {
     if (isLinkable(b.type) || b.type === 'trap') continue;
-    drawMesh(meshes.prop.disc, centerX(b) + .06, .018, centerZ(b) - .04, 0, b.size * .4, 1, b.size * .4, SHADOW, 1, .16);
+    drawMesh(meshes.prop.disc, centerX(b) + .1, .018, centerZ(b) - .07, 0, b.size * .5, 1, b.size * .5, SHADOW, 1, .16);
   }
   for (const f of effects) {
     const p = f.t / f.d, s = f.size * (.5 + p);
@@ -139,10 +160,10 @@ function drawLinkable(b, hit) {
     const alongZ = sameTeamWall(b.i, b.j - 1, b.team) || sameTeamWall(b.i, b.j + 1, b.team);
     rot = alongZ && !alongX ? Math.PI / 2 : 0;
   }
-  drawMesh(models[def.post], x, 0, z, rot, 1, sy, 1, tint, tintAmount);
+  drawMesh(models[def.post], x, 0, z, rot, b.type === 'gate' ? 1 : WALL_THICK, sy * WALL_HEIGHT, WALL_THICK, tint, tintAmount);
   const east = sameTeamWall(b.i + 1, b.j, b.team), south = sameTeamWall(b.i, b.j + 1, b.team);
-  if (east) drawMesh(models[def.link], x, 0, z, 0, 1, Math.min(sy, raised(east)), 1, tint, b.built ? 0 : .35);
-  if (south) drawMesh(models[def.link], x, 0, z, -Math.PI / 2, 1, Math.min(sy, raised(south)), 1, tint, b.built ? 0 : .35);
+  if (east) drawMesh(models[def.link], x, 0, z, 0, 1, Math.min(sy, raised(east)) * WALL_HEIGHT, WALL_THICK, tint, b.built ? 0 : .35);
+  if (south) drawMesh(models[def.link], x, 0, z, -Math.PI / 2, 1, Math.min(sy, raised(south)) * WALL_HEIGHT, WALL_THICK, tint, b.built ? 0 : .35);
 }
 
 function drawBuilding(b) {
@@ -154,12 +175,13 @@ function drawBuilding(b) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) drawMesh(cube, yx + sx * 1.42, .12, yz + sz * 1.42, 0, .08, .24, .08, colors.dark, 1);
   }
   if (isLinkable(b.type)) { drawLinkable(b, hit); return; }
-  if (b.built) { drawMesh(models[b.type], x, 0, z, 0, 1, 1, 1, hit, hit ? .45 : 0); return; }
+  const ms = modelScale(b.type), sy = ms * modelRise(b.type);
+  if (b.built) { drawMesh(models[b.type], x, 0, z, 0, ms, sy, ms, hit, hit ? .45 : 0); return; }
   drawMesh(meshes.prop.foundation, x, 0, z, 0, b.size * .98, 1, b.size * .98);
   if (isPlanOnly(b)) return;
-  drawMesh(models[b.type], x, 0, z, 0, 1, Math.max(.06, b.progress), 1, hit || PLAN_TINT, hit ? .45 : .35);
-  const half = b.size * .5;
-  drawMesh(meshes.prop.scaffold, x, 0, z, 0, half, b.size === 1 ? .8 : 1.5, half);
+  drawMesh(models[b.type], x, 0, z, 0, ms, Math.max(.06, b.progress) * sy, ms, hit || PLAN_TINT, hit ? .45 : .35);
+  const half = b.size * .74;
+  drawMesh(meshes.prop.scaffold, x, 0, z, 0, half, Math.max(.8, topOf(b.type) * .8), half);
 }
 
 function drawFields() {
@@ -180,16 +202,25 @@ function carryColor(item) {
   return C[key];
 }
 
-/** Units grow a little as the camera zooms out, so a crowd stays readable at any distance. */
-const zoomBoost = () => Math.min(1.45, Math.max(1, Math.sqrt(camera.D / 24)));
+/** How a unit's model is stretched: people evenly squashed to fill a tile (wide and not so tall), siege machines evenly enlarged. */
+function unitScale(def) {
+  const k = def.look.scale || 1;
+  return def.role === 'siege' ? [SIEGE_SCALE * k, SIEGE_SCALE * k] : [UNIT_WIDTH * k, UNIT_HEIGHT * k];
+}
+
+/** The radius of the patch of ground a unit stands on (its shadow). */
+function footRadius(u) {
+  const def = UNITS[u.kind], [w] = unitScale(def);
+  return def.role === 'siege' ? w * .42 : Math.max(.3, w * .1);
+}
 
 function drawUnit(u) {
-  const look = UNITS[u.kind].look, bob = u.moving ? Math.abs(Math.sin(u.anim * 11)) * .05 : 0;
-  const swing = u.working ? Math.sin(u.anim * 12) * .18 : 0, hit = u.hitTimer > 0 ? HIT_TINT : null, s = (look.scale || UNIT_SCALE) * zoomBoost();
-  drawMesh(meshes.unit[u.team][u.kind], u.x, bob, u.z, u.face + swing, s, s, s, hit, hit ? .55 : 0);
+  const def = UNITS[u.kind], look = def.look, bob = u.moving ? Math.abs(Math.sin(u.anim * 11)) * .1 : 0;
+  const swing = u.working ? Math.sin(u.anim * 12) * .18 : 0, hit = u.hitTimer > 0 ? HIT_TINT : null, [w, h] = unitScale(def);
+  drawMesh(meshes.unit[u.team][u.kind], u.x, bob, u.z, u.face + swing, w, h, w, hit, hit ? .55 : 0);
   if (u.carry) {
-    const sx = -Math.sin(u.face) * .1, sz = -Math.cos(u.face) * .1;
-    drawMesh(meshes.prop.cube, u.x + sx, .24 + bob, u.z + sz, u.face, .12, .1, .1, carryColor(u.carry.item), 1);
+    const sx = -Math.sin(u.face) * .3, sz = -Math.cos(u.face) * .3;
+    drawMesh(meshes.prop.cube, u.x + sx, .62 + bob, u.z + sz, u.face, .34, .26, .26, carryColor(u.carry.item), 1);
   }
 }
 
@@ -209,24 +240,28 @@ function drawMarkers(now) {
 
 function drawArrows() {
   for (const a of arrows) {
-    const t = a.progress, x = a.x0 + (a.ex - a.x0) * t, z = a.z0 + (a.ez - a.z0) * t, y = a.y0 + (.4 - a.y0) * t + Math.sin(Math.PI * t) * a.arc;
-    if (a.rock) drawMesh(meshes.prop.puff, x, y, z, 0, .15, .15, .15, [.46, .44, .42], 1);
-    else drawMesh(meshes.prop.arrow, x, y, z, Math.atan2(-(a.ez - a.z0), a.ex - a.x0), 1.3 * a.scale);
+    const t = a.progress, x = a.x0 + (a.ex - a.x0) * t, z = a.z0 + (a.ez - a.z0) * t, y = a.y0 + (.7 - a.y0) * t + Math.sin(Math.PI * t) * a.arc;
+    if (a.rock) drawMesh(meshes.prop.puff, x, y, z, 0, .3, .3, .3, [.46, .44, .42], 1);
+    else drawMesh(meshes.prop.arrow, x, y, z, Math.atan2(-(a.ez - a.z0), a.ex - a.x0), 2.4 * a.scale);
   }
 }
 
 function drawBars() {
-  for (const u of units) if (u.hp < u.maxHp) drawBar(u.x, UNITS[u.kind].look.barHeight || .7, u.z, .36, u.hp / u.maxHp, HEALTH_COLORS[u.team]);
+  for (const u of units) {
+    if (u.hp >= u.maxHp) continue;
+    const def = UNITS[u.kind], [w, h] = unitScale(def);
+    drawBar(u.x, (def.look.barHeight || .6) * h, u.z, Math.max(.8, w * .22), u.hp / u.maxHp, HEALTH_COLORS[u.team]);
+  }
   for (const b of buildings) {
-    const def = BUILDINGS[b.type], top = def.barHeight ?? 1;
+    const top = topOf(b.type) + .3;
     if (!b.built && !isLinkable(b.type)) {            // construction progress, or how much of the material has arrived
       let have = 0, need = 0;
       for (const r of RESOURCE_IDS) { have += b.have[r]; need += b.need[r]; }
-      drawBar(centerX(b), top * .7, centerZ(b), b.size * .5, b.progress > 0 ? b.progress : have / (need || 1), b.progress > 0 ? [.95, .78, .3] : [.75, .68, .55]);
+      drawBar(centerX(b), top * .7, centerZ(b), b.size * .6 + .2, b.progress > 0 ? b.progress : have / (need || 1), b.progress > 0 ? [.95, .78, .3] : [.75, .68, .55]);
     } else if (b.built) {
-      if (b.hp < b.maxHp) drawBar(centerX(b), top, centerZ(b), Math.min(1, b.size * .5), b.hp / b.maxHp, HEALTH_COLORS[b.team]);
+      if (b.hp < b.maxHp) drawBar(centerX(b), top, centerZ(b), Math.min(1.6, b.size * .6 + .2), b.hp / b.maxHp, HEALTH_COLORS[b.team]);
       const work = productionOf(b);                    // what it is making (a unit, a worker, goods or income), above any health bar
-      if (work) drawBar(centerX(b), top + .13, centerZ(b), Math.min(1, b.size * .5 + .1), Math.max(.02, work.fraction), work.stalled ? [.95, .62, .3] : [.42, .86, .78]);
+      if (work) drawBar(centerX(b), top + .13, centerZ(b), Math.min(1.6, b.size * .6 + .2), Math.max(.02, work.fraction), work.stalled ? [.95, .62, .3] : [.42, .86, .78]);
     }
   }
 }
@@ -243,7 +278,8 @@ function drawGhost(ghost, now) {
   const gx = ghost.i + def.size / 2, gz = ghost.j + def.size / 2;
   drawMesh(meshes.prop.cube, gx, .03, gz, 0, def.size, .05, def.size, color, 1, .45);
   setDepthWrite(true);
-  drawMesh(meshes.building[0][def.models ? def.models.post : ghost.type], gx, 0, gz, 0, 1, 1, 1, color, .35, .7);
-  if (ok) drawMesh(meshes.prop.gem, gx, (def.barHeight ?? 1) + .35 + Math.abs(Math.sin(now * 4)) * .15, gz, now * 2, .09, .14, .09, [.98, .82, .32], 1);   // "touch me again"
+  const ms = def.linkable ? WALL_THICK : modelScale(ghost.type), sy = def.linkable ? WALL_HEIGHT : ms * modelRise(ghost.type);
+  drawMesh(meshes.building[0][def.models ? def.models.post : ghost.type], gx, 0, gz, 0, ms, sy, ms, color, .35, .7);
+  if (ok) drawMesh(meshes.prop.gem, gx, topOf(ghost.type) + .6 + Math.abs(Math.sin(now * 4)) * .15, gz, now * 2, .14, .22, .14, [.98, .82, .32], 1);   // "touch me again"
   setDepthWrite(false);
 }

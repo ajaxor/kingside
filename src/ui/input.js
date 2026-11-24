@@ -65,8 +65,8 @@ function tap(x, y) {
   }
   if (b || !t) { select(b || null); return; }
   select(null);
-  // Open ground on your own side: a menu of what could be built right here.
-  if (canPlace('hut', t.i, t.j)) openMenu({ i: t.i, j: t.j, sx: x, sy: y }); else openMenu(null);
+  // Open ground on your own side (room for one more tile of something): a menu of what could be built right here.
+  if (canPlace('field', t.i, t.j)) openMenu({ i: t.i, j: t.j, sx: x, sy: y }); else openMenu(null);
 }
 
 function onDown(e, canvas) {
